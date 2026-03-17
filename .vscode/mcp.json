@@ -1,0 +1,67 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "figma-api-key",
+      "description": "Figma Personal Access Token (Settings → Account → Personal access tokens)",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "magic-api-key",
+      "description": "21st.dev Magic API Key (app.21st.dev/settings)",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "postgres-url",
+      "description": "PostgreSQL connection string (e.g. postgresql://user:pass@localhost:5432/konstruktor)",
+      "password": true
+    }
+  ],
+  "servers": {
+    "figma": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "figma-developer-mcp", "--stdio"],
+      "env": {
+        "FIGMA_API_KEY": "${input:figma-api-key}"
+      }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--stdio"]
+    },
+    "magic": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@21st-dev/magic@latest"],
+      "env": {
+        "API_KEY": "${input:magic-api-key}"
+      }
+    },
+    "postgres": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "DATABASE_URL": "${input:postgres-url}"
+      }
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "c:\\Users\\eg0re\\konstruktor"
+      ]
+    },
+    "context7": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@latest"]
+    }
+  }
+}

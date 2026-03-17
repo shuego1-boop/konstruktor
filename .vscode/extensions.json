@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "vitest.explorer",
+    "ms-playwright.playwright",
+    "tauri-apps.tauri-vscode",
+    "rust-lang.rust-analyzer",
+    "dbaeumer.vscode-eslint",
+    "prisma.prisma",
+    "qwtel.sqlite-viewer"
+  ]
+}

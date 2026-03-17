@@ -1,0 +1,6 @@
+export { QuizEngine } from './engine.ts'
+export type { EngineState } from './engine.ts'
+export { calculateScore, applyTimeBonus, getStreakMultiplier } from './scoring.ts'
+export type { CalculateScoreParams, ApplyTimeBonusParams } from './scoring.ts'
+export { QuizTimer } from './timer.ts'
+export type { QuizTimerOptions } from './timer.ts'

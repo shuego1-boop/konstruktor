@@ -1,0 +1,41 @@
+[package]
+name = "konstruktor-desktop"
+version = "0.1.0"
+description = "Konstruktor quiz builder"
+authors = ["Konstruktor"]
+license = ""
+repository = ""
+default-run = "konstruktor-desktop"
+edition = "2021"
+rust-edition = "2021"
+
+[lib]
+name = "konstruktor_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "konstruktor-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+zip = "2"
+sha2 = "0.10"
+hex = "0.4"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["full"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+base64 = "0.22"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]

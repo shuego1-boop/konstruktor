@@ -1,0 +1,90 @@
+﻿import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router'
+import { Filesystem, Directory } from '@capacitor/filesystem'
+import type { Quiz, PackManifest } from '@konstruktor/shared'
+import { Button, Spinner } from '@konstruktor/ui'
+
+type PackEntry = {
+  packId: string
+  manifest: PackManifest
+}
+
+export function HomePage() {
+  const navigate = useNavigate()
+  const [packs, setPacks] = useState<PackEntry[]>([])
+  const [loadingPacks, setLoadingPacks] = useState(true)
+  const playerName = localStorage.getItem('player_name') ?? 'Ученик'
+
+  useEffect(() => {
+    loadLocalPacks()
+  }, [])
+
+  async function loadLocalPacks() {
+    setLoadingPacks(true)
+    try {
+      const result = await Filesystem.readdir({
+        path: 'packs',
+        directory: Directory.Data,
+      })
+      const entries: PackEntry[] = []
+      for (const file of result.files) {
+        if (!file.name.endsWith('.pack')) continue
+        try {
+          const raw = await Filesystem.readFile({
+            path: `packs/${file.name}/manifest.json`,
+            directory: Directory.Data,
+          })
+          const manifest = JSON.parse(raw.data as string) as PackManifest
+          entries.push({ packId: file.name.replace('.pack', ''), manifest })
+        } catch {
+          // skip corrupt pack
+        }
+      }
+      setPacks(entries)
+    } catch {
+      // packs directory doesn't exist yet — that's fine
+      setPacks([])
+    } finally {
+      setLoadingPacks(false)
+    }
+  }
+
+  function startQuiz(packId: string) {
+    navigate(`/quiz/${packId}`)
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col items-center bg-gradient-to-br from-indigo-600 to-purple-700 p-6">
+      <div className="w-full max-w-lg">
+        <h1 className="text-4xl font-bold text-white text-center mb-2 mt-8">Konstruktor</h1>
+        <p className="text-indigo-200 text-center mb-8">Выберите квиз для начала</p>
+
+        <div className="bg-white rounded-2xl p-6 shadow-xl">
+          <h2 className="text-sm font-semibold text-slate-700 mb-3">Мои квизы</h2>
+          {loadingPacks && <div className="flex justify-center py-6"><Spinner /></div>}
+          {!loadingPacks && packs.length === 0 && (
+            <p className="text-slate-400 text-sm text-center py-4">
+              Нет квизов. Скачайте по коду выше.
+            </p>
+          )}
+          {!loadingPacks && packs.length > 0 && (
+            <ul className="flex flex-col gap-3">
+              {packs.map(({ packId, manifest }) => (
+                <li key={packId}>
+                  <button
+                    className="w-full text-left rounded-xl border border-slate-200 px-4 py-3 hover:bg-indigo-50 hover:border-indigo-300 transition-colors"
+                    onClick={() => startQuiz(packId)}
+                  >
+                    <p className="font-semibold text-slate-800">{manifest.title}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">v{manifest.quizVersion}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}
