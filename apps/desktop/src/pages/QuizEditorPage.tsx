@@ -37,6 +37,23 @@ import type {
 } from "@konstruktor/shared";
 import { Button, Badge, Input, Spinner } from "@konstruktor/ui";
 import { useToast } from "../context/ToastContext.tsx";
+import {
+  ArrowLeft,
+  Play,
+  PaperPlaneTilt,
+  CloudCheck,
+  DotsNine,
+  MagicWand,
+  Plus,
+  RadioButton,
+  CheckSquareOffset,
+  ThumbsUpDown,
+  TextT,
+  ArrowsLeftRight,
+  SortAscending,
+  TextAlignLeft,
+  Crosshair,
+} from "@phosphor-icons/react";
 import Joyride, {
   ACTIONS,
   type CallBackProps,
@@ -44,6 +61,17 @@ import Joyride, {
   STATUS,
   type Step,
 } from "react-joyride";
+
+const QUESTION_TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
+  single_choice:   <RadioButton size={12} weight="bold" />,
+  multiple_choice: <CheckSquareOffset size={12} weight="bold" />,
+  true_false:      <ThumbsUpDown size={12} weight="bold" />,
+  text_input:      <TextT size={12} weight="bold" />,
+  fill_blank:      <TextAlignLeft size={12} weight="bold" />,
+  matching:        <ArrowsLeftRight size={12} weight="bold" />,
+  ordering:        <SortAscending size={12} weight="bold" />,
+  hotspot:         <Crosshair size={12} weight="bold" />,
+};
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   single_choice: "Один ответ",
@@ -130,7 +158,7 @@ function AnswerEditor({ question, onUpdate }: AnswerEditorProps) {
                 <button
                   type="button"
                   onClick={() => toggleCorrect(opt.id)}
-                  className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isCorrect ? "border-green-500 bg-green-500 text-white" : "border-slate-300 hover:border-green-400"}`}
+                  className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${isCorrect ? "border-green-500 bg-green-500 text-white" : "border-slate-300 hover:border-green-400"}`}
                   aria-label={
                     isCorrect
                       ? "Отметить как неверный"
@@ -777,10 +805,10 @@ function SortableQuestionItem({
       initial={{ opacity: 0, scale: 0.95, y: -8 }}
       animate={{ opacity: 1, scale: 1, y: 0, transition: { duration: 0.2 } }}
       exit={{ opacity: 0, scale: 0.95, y: -8, transition: { duration: 0.15 } }}
-      className={`flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition-colors ${
+      className={`flex items-center gap-2 rounded-2xl border p-3 cursor-pointer transition-all ${
         isActive
-          ? "bg-blue-50 border-blue-400"
-          : "bg-white border-slate-200 hover:bg-slate-50"
+          ? "bg-primary-50 border-primary-200 shadow-[0_2px_12px_rgba(139,92,246,0.12)]"
+          : "bg-white border-slate-100 hover:border-primary-200 hover:bg-primary-50/40 shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
       }`}
       onClick={onSelect}
       data-demo-question=""
@@ -788,22 +816,26 @@ function SortableQuestionItem({
       <span
         {...attributes}
         {...listeners}
-        className="cursor-grab text-slate-300 hover:text-slate-500 px-1 text-lg"
+        className="cursor-grab text-slate-300 hover:text-slate-500 p-1 rounded-lg hover:bg-slate-100 transition-colors"
         onClick={(e) => e.stopPropagation()}
       >
-        ☰
+        <DotsNine size={16} weight="bold" />
       </span>
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-slate-400 mb-0.5">Вопрос {index + 1}</p>
-        <p className="text-sm font-medium truncate text-slate-700">
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <span className={`text-[10px] font-bold ${isActive ? "text-primary-500" : "text-slate-400"}`}>
+            {QUESTION_TYPE_ICONS[question.type]}
+          </span>
+          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+            {index + 1}
+          </span>
+        </div>
+        <p className={`text-[13px] font-semibold truncate ${isActive ? "text-primary-800" : "text-slate-700"}`}>
           {question.text || "Без названия"}
         </p>
-        <Badge variant="neutral" className="mt-1">
-          {QUESTION_TYPE_LABELS[question.type] ?? question.type}
-        </Badge>
       </div>
       <button
-        className="text-slate-300 hover:text-red-500 transition-colors p-1"
+        className="text-slate-200 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-50"
         onClick={(e) => {
           e.stopPropagation();
           onDelete();
@@ -1329,10 +1361,10 @@ export function QuizEditorPage() {
 
   if (isAutoGenerating)
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-gradient-to-br from-indigo-50 via-violet-50 to-purple-50">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-linear-to-br from-indigo-50 via-violet-50 to-purple-50">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200">
+            <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200">
               <span className="text-4xl">✨</span>
             </div>
             <div className="absolute -inset-2 rounded-3xl border-2 border-indigo-300/60 animate-ping" />
@@ -1434,7 +1466,7 @@ export function QuizEditorPage() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex flex-col h-screen overflow-hidden bg-[#FAFAFA]">
       <Joyride
         run={editorTourRun}
         steps={EDITOR_STEPS}
@@ -1475,24 +1507,71 @@ export function QuizEditorPage() {
           back: "← Назад",
         }}
       />
-      {/* Left sidebar — question list */}
-      <aside className="w-64 flex flex-col border-r border-slate-200 bg-white">
-        <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+      {/* ── Топ-бар ──────────────────────────────────────────────────── */}
+      <header className="h-16 px-6 flex items-center justify-between z-30 bg-white border-b border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.02)] shrink-0">
+        {/* Левая часть: назад + breadcrumb + статус */}
+        <div className="flex items-center gap-4">
           <button
-            className="text-sm text-blue-600 hover:underline"
+            className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
             data-tour="editor-back"
             onClick={() => navigate("/dashboard")}
           >
-            ← Назад
+            <ArrowLeft size={20} weight="bold" />
           </button>
-          <span className="text-xs text-slate-400">
-            {quiz?.questions.length ?? 0} вопросов
-          </span>
+          <div className="flex items-center gap-2 text-[15px] font-bold">
+            <span className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" onClick={() => navigate("/dashboard")}>
+              Мои квизы
+            </span>
+            <span className="text-slate-300 text-xs">›</span>
+            <span className="text-slate-800 bg-slate-100 px-3 py-1 rounded-lg truncate max-w-48">
+              {quiz?.title || "Без названия"}
+            </span>
+          </div>
+          {quiz && (
+            <div className={`ml-2 flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border ${
+              (quiz as Quiz & { status?: string }).status === "published"
+                ? "text-emerald-600 bg-emerald-50 border-emerald-100"
+                : "text-slate-400 bg-slate-50 border-slate-100"
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                (quiz as Quiz & { status?: string }).status === "published" ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
+              }`} />
+              {(quiz as Quiz & { status?: string }).status === "published" ? "Опубликован" : "Черновик"}
+            </div>
+          )}
         </div>
-        <div
-          className="flex-1 overflow-y-auto p-3 flex flex-col gap-2"
-          data-tour="editor-questions"
-        >
+
+        {/* Правая часть: статус сохранения + действия */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-slate-400 mr-2 flex items-center gap-1">
+            <CloudCheck size={16} className="text-emerald-500" />
+            {updateMutation.isPending ? "Сохранение..." : "Сохранено"}
+          </span>
+          <button
+            className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[14px] transition-colors flex items-center gap-2"
+            onClick={() => navigate(`/preview/${quizId}`)}
+          >
+            <Play size={14} weight="fill" className="text-slate-500" /> Превью
+          </button>
+          <button
+            className="px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-500 text-white font-bold text-[14px] transition-transform active:scale-95 shadow-md flex items-center gap-2"
+            onClick={() => navigate(`/preview/${quizId}`)}
+          >
+            <PaperPlaneTilt size={14} weight="bold" /> Опубликовать
+          </button>
+        </div>
+      </header>
+
+      {/* ── Рабочая область (3 колонки) ─────────────────────────────── */}
+      <div className="flex flex-1 overflow-hidden">
+      {/* Left sidebar — question list */}
+      <aside className="w-70 bg-white/80 backdrop-blur-md border-r border-slate-200 flex flex-col shrink-0 z-20">
+        <div className="p-4 flex items-center justify-between border-b border-slate-100">
+          <h3 className="font-extrabold text-slate-800 text-[15px]">
+            Вопросы ({quiz?.questions.length ?? 0})
+          </h3>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
           {quiz && (
             <DndContext
               sensors={sensors}
@@ -1520,12 +1599,12 @@ export function QuizEditorPage() {
           )}
         </div>
         <div
-          className="p-3 border-t border-slate-200"
+          className="p-4 border-t border-slate-100 bg-white relative"
           data-tour="editor-add-question"
         >
           <details className="group">
-            <summary className="cursor-pointer text-sm font-medium text-blue-600 hover:underline list-none">
-              + Добавить вопрос ▾
+            <summary className="cursor-pointer w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 text-slate-600 font-bold text-[14px] hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50 transition-all list-none">
+              <Plus size={18} weight="bold" /> Добавить вопрос
             </summary>
             <div className="mt-2 flex flex-col gap-1">
               {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[])
@@ -1534,25 +1613,26 @@ export function QuizEditorPage() {
                   <button
                     key={type}
                     data-demo-qtype={type}
-                    className="text-left text-xs px-3 py-2 rounded hover:bg-slate-100 text-slate-700"
+                    className="text-left text-xs px-3 py-2 rounded-xl hover:bg-primary-50 hover:text-primary-700 text-slate-700 flex items-center gap-2 font-semibold transition-colors"
                     onClick={() => addQuestion(type)}
                   >
+                    <span className="text-slate-400">{QUESTION_TYPE_ICONS[type]}</span>
                     {QUESTION_TYPE_LABELS[type]}
                   </button>
                 ))}
             </div>
           </details>
         </div>
-        <div className="p-3 border-t border-slate-200">
+        <div className="p-4 border-t border-slate-100">
           <button
-            className="w-full text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg py-2 px-3 transition-colors text-left"
+            className="w-full text-sm font-bold text-primary-600 hover:bg-primary-50 rounded-xl py-2.5 px-3 transition-colors text-left flex items-center gap-2"
             onClick={() => {
               setAiTopic(quiz?.title ?? quiz?.subject ?? "");
               setAiGradeLevel(quiz?.gradeLevel ?? "");
               setAiModalOpen(true);
             }}
           >
-            ✨ Создать с ИИ
+            <MagicWand size={16} weight="duotone" className="text-primary-500" /> Создать с ИИ
           </button>
         </div>
       </aside>
@@ -1636,10 +1716,10 @@ export function QuizEditorPage() {
 
       {/* Right sidebar — quiz settings */}
       <aside
-        className="w-72 border-l border-slate-200 bg-white p-5 overflow-y-auto"
+        className="w-72 border-l border-slate-100 bg-white/80 backdrop-blur-md p-5 overflow-y-auto shrink-0"
         data-tour="editor-settings"
       >
-        <h2 className="text-sm font-semibold text-slate-700 mb-4">
+        <h2 className="text-[15px] font-extrabold text-slate-800 mb-4">
           Настройки квиза
         </h2>
         {quiz && (
@@ -1790,7 +1870,7 @@ export function QuizEditorPage() {
                   </button>
                 )}
               </div>
-              <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-200 bg-gradient-to-br from-indigo-400 to-violet-600">
+              <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-200 bg-linear-to-br from-indigo-400 to-violet-600">
                 {editorBgDataUrl ? (
                   <img
                     src={editorBgDataUrl}
@@ -1816,16 +1896,16 @@ export function QuizEditorPage() {
             </div>
           </div>
         )}
-      </aside>
+        </aside>
 
-      {/* ─── Background Modal ────────────────────────────────────────────── */}
+      </div> {/* конец рабочей области */} ────────────────────────────────────────────── */}
       {bgModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           onClick={() => setBgModalOpen(false)}
         >
           <div
-            className="relative bg-white rounded-2xl shadow-2xl w-[440px] max-w-[90vw] max-h-[90vh] overflow-y-auto"
+            className="relative bg-white rounded-2xl shadow-2xl w-110 max-w-[90vw] max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -1873,7 +1953,7 @@ export function QuizEditorPage() {
                 </div>
               )}
               {bgModalError && (
-                <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 break-words">
+                <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 wrap-break-word">
                   {bgModalError}
                 </div>
               )}
@@ -1970,7 +2050,7 @@ export function QuizEditorPage() {
           onClick={() => setAiModalOpen(false)}
         >
           <div
-            className="relative bg-white rounded-2xl shadow-2xl p-6 w-[480px] max-w-[90vw] max-h-[90vh] overflow-y-auto"
+            className="relative bg-white rounded-2xl shadow-2xl p-6 w-120 max-w-[90vw] max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-slate-800 mb-1">

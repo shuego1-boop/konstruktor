@@ -369,10 +369,32 @@ export function PreviewPage() {
       className="min-h-screen relative text-white overflow-hidden select-none"
       style={{ background: gradient, ...bgImage }}
     >
+      {/* Animated mesh gradient */}
+      <div
+        className="absolute pointer-events-none z-0"
+        style={{
+          inset: "-50%",
+          background:
+            "radial-gradient(circle at 50% 50%, rgba(16,185,129,0.12) 0%, transparent 60%)," +
+            "radial-gradient(circle at 80% 20%, rgba(56,189,248,0.12) 0%, transparent 50%)," +
+            "radial-gradient(circle at 20% 80%, rgba(139,92,246,0.12) 0%, transparent 50%)",
+          animation: "meshSpin 20s linear infinite alternate",
+        }}
+      />
+      {/* Subtle grid texture */}
+      <div
+        className="absolute inset-0 pointer-events-none z-0 opacity-[0.06]"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23fff' fill-opacity='1'/%3E%3C/svg%3E\")",
+        }}
+      />
+      {/* Style tag for mesh keyframes */}
+      <style>{`@keyframes meshSpin { from { transform: rotate(0deg) scale(1.5); } to { transform: rotate(360deg) scale(1.5); } }`}</style>
       {/* Overlay: lighter in playing so the art breathes; darker for idle/finished */}
       {bgDataUrl && (
         <div
-          className="absolute inset-0"
+          className="absolute inset-0 z-1"
           style={{
             background:
               state === "playing" || state === "feedback"
@@ -388,7 +410,7 @@ export function PreviewPage() {
       {/* Vignette only for idle/finished */}
       {(state === "idle" || state === "finished") && (
         <div
-          className="absolute inset-0 pointer-events-none z-[1]"
+          className="absolute inset-0 pointer-events-none z-2"
           style={{
             background:
               "radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.65) 100%)",
@@ -401,18 +423,77 @@ export function PreviewPage() {
         className="relative z-10 flex flex-col"
         style={{ height: "100vh", overflow: "hidden" }}
       >
-        {/* Top progress strip */}
-        <div className="h-[6px] bg-black/30">
-          <div
+        {/* ── Glass header (playing / feedback) ─────────────────────── */}
+        {(state === "playing" || state === "feedback") ? (
+          <header
             style={{
-              width: `${progressPct}%`,
-              height: "100%",
-              background: "linear-gradient(90deg, #818cf8, #c084fc)",
-              transition: "width 0.6s ease-out",
-              boxShadow: "0 0 12px rgba(192,132,252,0.7)",
+              background: "rgba(15,23,42,0.45)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              flexShrink: 0,
             }}
-          />
-        </div>
+            className="relative flex flex-col px-6 pt-3 pb-0"
+          >
+            <div className="flex items-center justify-between pb-2">
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 border border-white/10 font-bold text-sm transition-colors"
+                onClick={() => navigate("/dashboard")}
+              >
+                ✕ Завершить
+              </button>
+              <div className="flex items-center gap-3 bg-black/30 px-5 py-2 rounded-xl border border-white/5">
+                <span className="text-[13px] font-extrabold text-white/50 uppercase tracking-widest">
+                  Вопрос {questionIndex + 1}
+                  <span className="text-white/30"> / {total}</span>
+                </span>
+                {remainingLives !== undefined && (
+                  <>
+                    <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                    <span
+                      style={{
+                        color:
+                          remainingLives <= 1
+                            ? "#f87171"
+                            : remainingLives <= 2
+                              ? "#fbbf24"
+                              : "#fb7185",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      {"❤️".repeat(remainingLives)}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+            {/* Progress strip inside header */}
+            <div style={{ height: 4, background: "rgba(255,255,255,0.06)" }}>
+              <div
+                style={{
+                  width: `${progressPct}%`,
+                  height: "100%",
+                  background: "linear-gradient(90deg, #818cf8, #c084fc)",
+                  transition: "width 0.6s ease-out",
+                  boxShadow: "0 0 12px rgba(192,132,252,0.7)",
+                }}
+              />
+            </div>
+          </header>
+        ) : (
+          /* Thin progress strip for idle / finished */
+          <div className="h-1.5 bg-black/30" style={{ flexShrink: 0 }}>
+            <div
+              style={{
+                width: `${progressPct}%`,
+                height: "100%",
+                background: "linear-gradient(90deg, #818cf8, #c084fc)",
+                transition: "width 0.6s ease-out",
+                boxShadow: "0 0 12px rgba(192,132,252,0.7)",
+              }}
+            />
+          </div>
+        )}
 
         {/* ── IDLE ───────────────────────────────────────────────────────────── */}
         {state === "idle" && (
@@ -551,52 +632,57 @@ export function PreviewPage() {
                     padding: "14px 24px 22px",
                   }}
                 >
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: 12,
-                      left: 18,
-                      color: "rgba(255,255,255,0.7)",
-                      fontSize: "0.8rem",
-                      fontWeight: 700,
-                      letterSpacing: "0.06em",
-                      textShadow: "0 1px 8px rgba(0,0,0,0.9)",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Вопрос {questionIndex + 1} / {total}
-                    {remainingLives !== undefined && (
-                      <span
-                        style={{
-                          marginLeft: 10,
-                          color:
-                            remainingLives <= 1
-                              ? "#f87171"
-                              : remainingLives <= 2
-                                ? "#fbbf24"
-                                : "#fb7185",
-                          fontSize: "0.85rem",
-                        }}
-                      >
-                        {"❤️".repeat(remainingLives)}
-                      </span>
-                    )}
-                  </span>
-                  <span
+                  {/* Q counter + lives are in the glass header above */}
+                  {/* Circular SVG timer */}
+                  {/* Circular SVG timer */}
+                  <div
                     style={{
                       position: "absolute",
                       top: 8,
                       right: 18,
-                      color: timerColor,
-                      fontSize: "clamp(1.1rem,2.2vw,1.5rem)",
-                      fontWeight: 900,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      textShadow: `0 0 16px ${timerGlow}, 0 0 4px ${timerGlow}`,
-                      fontVariantNumeric: "tabular-nums",
+                      width: 72,
+                      height: 72,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    {Math.ceil(timeLeft / 1000)}
-                  </span>
+                    <svg
+                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+                      viewBox="0 0 100 100"
+                    >
+                      <circle cx="50" cy="50" r="45" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
+                      <circle
+                        cx="50" cy="50" r="45"
+                        fill="none"
+                        stroke={timerColor}
+                        strokeWidth="6"
+                        strokeLinecap="round"
+                        strokeDasharray="283"
+                        strokeDashoffset={283 - timerPct * 283}
+                        style={{
+                          transform: "rotate(-90deg)",
+                          transformOrigin: "50% 50%",
+                          transition: "stroke-dashoffset 0.1s linear, stroke 0.5s ease",
+                          filter: `drop-shadow(0 0 8px ${timerGlow})`,
+                        }}
+                      />
+                    </svg>
+                    <span
+                      style={{
+                        color: timerColor,
+                        fontSize: "1.35rem",
+                        fontWeight: 900,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontVariantNumeric: "tabular-nums",
+                        position: "relative",
+                        zIndex: 1,
+                        textShadow: `0 0 12px ${timerGlow}`,
+                      }}
+                    >
+                      {Math.ceil(timeLeft / 1000)}
+                    </span>
+                  </div>
                   <p
                     style={{
                       margin: 0,
@@ -1762,32 +1848,34 @@ export function PreviewPage() {
                         onClick={next}
                         data-demo="next-btn"
                         style={{
-                          background: "linear-gradient(135deg,#059669,#10b981)",
-                          boxShadow: "0 4px 16px rgba(16,185,129,0.4)",
+                          background: "#ffffff",
+                          color: "#0f172a",
+                          boxShadow: "0 10px 40px rgba(255,255,255,0.18), 0 4px 16px rgba(0,0,0,0.3)",
                           border: "none",
-                          borderRadius: 10,
-                          padding:
-                            "clamp(9px,1.4vh,13px) clamp(16px,2.2vw,32px)",
-                          fontSize: "clamp(0.82rem,1.5vw,1.05rem)",
-                          fontWeight: 800,
-                          color: "#fff",
+                          borderRadius: 9999,
+                          padding: "clamp(10px,1.6vh,14px) clamp(20px,3vw,40px)",
+                          fontSize: "clamp(0.9rem,1.6vw,1.1rem)",
+                          fontWeight: 900,
                           cursor: "pointer",
-                          transition: "transform 0.15s",
+                          transition: "transform 0.15s, box-shadow 0.15s",
                           whiteSpace: "nowrap",
                           flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
                         }}
                         onMouseEnter={(e) => {
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.transform = "scale(1.05)";
+                          const b = e.currentTarget as HTMLButtonElement;
+                          b.style.transform = "scale(1.06)";
+                          b.style.boxShadow = "0 14px 50px rgba(255,255,255,0.25), 0 6px 20px rgba(0,0,0,0.35)";
                         }}
                         onMouseLeave={(e) => {
-                          (
-                            e.currentTarget as HTMLButtonElement
-                          ).style.transform = "scale(1)";
+                          const b = e.currentTarget as HTMLButtonElement;
+                          b.style.transform = "scale(1)";
+                          b.style.boxShadow = "0 10px 40px rgba(255,255,255,0.18), 0 4px 16px rgba(0,0,0,0.3)";
                         }}
                       >
-                        Далее →
+                        Следующий вопрос <span style={{ fontSize: "1.1em" }}>→</span>
                       </button>
                     </div>
                   )}

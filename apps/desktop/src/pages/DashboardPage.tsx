@@ -1,13 +1,27 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
+import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import { AnimatePresence, motion } from "framer-motion";
+import {
+  MagnifyingGlass,
+  Bell,
+  MagicWand,
+  PaperPlaneTilt,
+  FileArrowUp,
+  FolderStar,
+  ListNumbers,
+  PencilSimple,
+  CaretRight,
+  Trophy,
+} from "@phosphor-icons/react";
 import type { Quiz } from "@konstruktor/shared";
-import { Button, Badge, Spinner } from "@konstruktor/ui";
+import { Button, Spinner } from "@konstruktor/ui";
 import { useTour } from "../context/TourContext.tsx";
 import { useToast } from "../context/ToastContext.tsx";
 import { useDemo } from "../context/DemoContext.tsx";
+import { Sidebar } from "../components/Sidebar.tsx";
 
 const SUGGESTIONS = [
   "11 кл, Биология, Молекулярная биология",
@@ -44,20 +58,24 @@ function nameToAvatarIdx(name: string): number {
   return h % 8;
 }
 
-const SUBJECT_COLORS: Record<string, string> = {
-  История: "from-amber-700 to-orange-900",
-  Математика: "from-blue-700 to-indigo-900",
-  Биология: "from-emerald-700 to-green-900",
-  Физика: "from-violet-700 to-purple-900",
-  Химия: "from-fuchsia-700 to-pink-900",
-  География: "from-teal-700 to-cyan-900",
-  Литература: "from-rose-700 to-red-900",
+// Pill-цвета для новых карточек
+const SUBJECT_PILL: Record<
+  string,
+  { bg: string; text: string; emoji: string }
+> = {
+  История: { bg: "bg-amber-50", text: "text-amber-700", emoji: "📜" },
+  Математика: { bg: "bg-sky-50", text: "text-sky-600", emoji: "📐" },
+  Биология: { bg: "bg-emerald-50", text: "text-emerald-700", emoji: "🌿" },
+  Физика: { bg: "bg-violet-50", text: "text-violet-600", emoji: "⚡" },
+  Химия: { bg: "bg-fuchsia-50", text: "text-fuchsia-600", emoji: "🧪" },
+  География: { bg: "bg-teal-50", text: "text-teal-600", emoji: "🌍" },
+  Литература: { bg: "bg-orange-50", text: "text-orange-600", emoji: "📚" },
 };
-const DEFAULT_COLORS = "from-indigo-700 to-slate-900";
-
-function isNew(createdAt: string) {
-  return Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000;
-}
+const DEFAULT_PILL = {
+  bg: "bg-slate-100",
+  text: "text-slate-600",
+  emoji: "📝",
+};
 
 function pluralQ(n: number) {
   if (n % 10 === 1 && n % 100 !== 11) return "вопрос";
@@ -69,8 +87,8 @@ function pluralQ(n: number) {
 export function DashboardPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { startTour } = useTour();
-  const { startDemo } = useDemo();
+  useTour(); // сохраняем контекст для AppTour
+  useDemo(); // сохраняем контекст для DemoRunner
   const { showToast } = useToast();
   const [creating, setCreating] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(
@@ -84,6 +102,9 @@ export function DashboardPage() {
   const [leaderLoading, setLeaderLoading] = useState(false);
   const [leaderData, setLeaderData] = useState<LeaderboardSession[]>([]);
   const [leaderTitle, setLeaderTitle] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterSubject, setFilterSubject] = useState("");
+  const [filterGrade, setFilterGrade] = useState("");
 
   function dismissWelcome() {
     localStorage.setItem("konstruktor_welcomed", "1");
@@ -220,186 +241,411 @@ export function DashboardPage() {
     }
   }
 
+  // Уникальные предметы и классы для фильтров
+  const allSubjects = useMemo(
+    () => [...new Set(quizzes.map((q) => q.subject).filter(Boolean))],
+    [quizzes],
+  );
+  const allGrades = useMemo(
+    () => [...new Set(quizzes.map((q) => q.gradeLevel).filter(Boolean))].sort(),
+    [quizzes],
+  );
+
+  // Отфильтрованные квизы
+  const filteredQuizzes = useMemo(() => {
+    return quizzes.filter((q) => {
+      if (filterSubject && q.subject !== filterSubject) return false;
+      if (filterGrade && q.gradeLevel !== filterGrade) return false;
+      if (
+        searchQuery &&
+        !q.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !(q.subject ?? "").toLowerCase().includes(searchQuery.toLowerCase())
+      )
+        return false;
+      return true;
+    });
+  }, [quizzes, filterSubject, filterGrade, searchQuery]);
+
   return (
     <>
-      <div className="min-h-screen bg-slate-50">
-        <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
-          <h1
-            className="text-xl font-bold text-slate-800"
-            data-tour="header-title"
-          >
-            Мои квизы
-          </h1>
-          <div className="flex gap-2">
-            <button
-              data-tour="nav-settings"
-              className="text-sm text-slate-500 hover:text-slate-800 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-              onClick={() => navigate("/settings")}
-            >
-              ⚙️ Настройки
-            </button>
-            <Button
-              variant="secondary"
-              onClick={startDemo}
-              data-tour="demo-btn"
-            >
-              🎬 Демо
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={startTour}
-              data-tour="tour-btn"
-            >
-              🎓 Обучение
-            </Button>
-            <Button
-              onClick={() => {
-                dismissWelcome();
-                setCreateModalOpen(true);
-              }}
-              data-tour="new-quiz"
-            >
-              + Новый квиз
-            </Button>
-          </div>
-        </header>
+      {/* ── Основной layout ─────────────────────────────────────────── */}
+      <div className="flex h-screen overflow-hidden bg-[#FAFAFA] text-slate-800 antialiased">
+        <Sidebar activePage="dashboard" />
 
-        <main className="p-8">
-          {isLoading && (
-            <div className="flex justify-center py-24">
-              <Spinner size="lg" />
+        <main className="flex-1 flex flex-col min-w-0">
+          {/* Верхняя панель */}
+          <header className="h-18 px-8 flex items-center justify-between z-10 sticky top-0 bg-[#FAFAFA]/80 backdrop-blur-xl border-b border-slate-200/50 shrink-0">
+            <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
+              <span className="text-slate-400">Рабочее пространство</span>
+              <CaretRight size={12} weight="bold" className="text-slate-300" />
+              <span>Мои квизы</span>
             </div>
-          )}
 
-          {!isLoading && quizzes.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-              <p className="text-lg">Квизов пока нет.</p>
-              <p className="text-sm mt-1">
-                Нажмите «+ Новый квиз» чтобы начать.
-              </p>
+            <div className="flex items-center gap-5">
+              {/* Поиск */}
+              <div className="relative w-64 lg:w-80 group hidden sm:block">
+                <MagnifyingGlass
+                  size={16}
+                  weight="bold"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors"
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Найти квиз или тему..."
+                  className="w-full bg-white border border-slate-200 focus:bg-white focus:border-primary-300 focus:ring-4 focus:ring-primary-50 rounded-full py-2.5 pl-10 pr-4 text-sm font-semibold outline-none transition-all placeholder:text-slate-400 shadow-sm"
+                />
+              </div>
+              {/* Колокол */}
+              <button
+                className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-primary-600 hover:border-primary-200 transition-all shadow-sm"
+                onClick={() => showToast("Уведомлений пока нет", "info")}
+              >
+                <Bell size={20} weight="fill" />
+              </button>
             </div>
-          )}
+          </header>
 
-          {!isLoading && quizzes.length > 0 && (
-            <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-              initial="hidden"
-              animate="visible"
-              variants={{
-                visible: { transition: { staggerChildren: 0.06 } },
-                hidden: {},
-              }}
-            >
-              {quizzes.map((quiz, idx) => {
-                const gradColors =
-                  SUBJECT_COLORS[quiz.subject ?? ""] ?? DEFAULT_COLORS;
-                const qCount = quiz.questions?.length ?? 0;
-                const fresh = isNew(quiz.createdAt);
-                const status =
-                  (quiz as Quiz & { status?: string }).status ?? "draft";
-                return (
-                  <motion.div
-                    key={quiz.id}
-                    variants={{
-                      hidden: { opacity: 0, y: 16 },
-                      visible: {
-                        opacity: 1,
-                        y: 0,
-                        transition: { duration: 0.3 },
-                      },
+          {/* Скроллируемый контент */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-7xl mx-auto p-8 flex flex-col gap-8">
+              {/* ── Верхний блок: AI-баннер + Быстрый старт ────────── */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* AI-баннер */}
+                <div
+                  className="lg:col-span-2 rounded-[28px] p-8 flex flex-col justify-center border border-white shadow-soft relative overflow-hidden"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #F3E8FF 0%, #FFE4E6 50%, #E0E7FF 100%)",
+                  }}
+                >
+                  {/* Блик */}
+                  <div
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      background:
+                        "radial-gradient(circle at 20% 50%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 60%)",
                     }}
-                    {...(idx === 0 ? { "data-tour": "quiz-card" } : {})}
-                    className="group relative bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden cursor-pointer border border-slate-100"
-                    onClick={() => navigate(`/editor/${quiz.id}`)}
-                  >
-                    {/* Gradient thumbnail */}
-                    <div
-                      className={`h-20 bg-gradient-to-br ${gradColors} flex items-end px-4 pb-3 relative`}
-                    >
-                      {fresh && (
-                        <span className="absolute top-2 right-2 bg-emerald-400 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                          НОВЫЙ
-                        </span>
-                      )}
-                      <span className="text-white/70 text-xs font-medium">
-                        {quiz.subject ?? "Предмет не указан"}
-                        {quiz.gradeLevel ? ` · ${quiz.gradeLevel} кл` : ""}
-                      </span>
+                  />
+                  <div className="relative z-10 flex items-start gap-6">
+                    <div className="w-16 h-16 rounded-[20px] bg-white/60 backdrop-blur-sm flex items-center justify-center text-primary-600 shrink-0 shadow-sm border border-white/80">
+                      <MagicWand size={32} weight="duotone" />
                     </div>
-
-                    {/* Body */}
-                    <div className="px-4 pt-3 pb-2">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <p className="font-semibold text-slate-800 text-sm leading-snug line-clamp-2 flex-1">
-                          {quiz.title || "Без названия"}
-                        </p>
-                        {status === "published" ? (
-                          <Badge variant="success" className="shrink-0">
-                            Опубл.
-                          </Badge>
-                        ) : (
-                          <Badge variant="neutral" className="shrink-0">
-                            Черн.
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-400 mb-3">
-                        {qCount} {pluralQ(qCount)}
+                    <div className="flex-1 min-w-0">
+                      <h2 className="text-2xl font-extrabold text-slate-800 mb-1.5">
+                        Что создадим сегодня? ✨
+                      </h2>
+                      <p className="text-slate-600 text-[15px] font-medium mb-5">
+                        Напишите тему урока, а ИИ соберёт из этого готовый квиз.
                       </p>
+                      <div className="relative flex items-center bg-white rounded-2xl p-1.5 shadow-input border border-primary-100 focus-within:ring-4 focus-within:ring-primary-50 transition-all">
+                        <input
+                          type="text"
+                          value={heroTopic}
+                          onChange={(e) => setHeroTopic(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && heroTopic.trim())
+                              void handleCreateAI();
+                          }}
+                          placeholder="Например: Тест на 10 вопросов по строению цветка..."
+                          className="w-full bg-transparent text-slate-800 placeholder:text-slate-400 text-[15px] font-semibold px-4 py-3 outline-none"
+                        />
+                        <button
+                          onClick={() => void handleCreateAI()}
+                          disabled={creating || !heroTopic.trim()}
+                          className="absolute right-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-[15px] px-6 py-2.5 rounded-xl transition-transform active:scale-95 shadow-md flex items-center gap-2"
+                        >
+                          {creating ? "..." : "Придумать"}
+                          <PaperPlaneTilt size={16} weight="bold" />
+                        </button>
+                      </div>
+                      {/* Подсказки */}
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {SUGGESTIONS.slice(0, 3).map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => setHeroTopic(s)}
+                            className="text-xs bg-white/60 hover:bg-white/90 text-slate-600 font-semibold rounded-full px-3 py-1 transition-colors border border-white/80"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
                     </div>
+                  </div>
+                </div>
 
-                    {/* Footer actions */}
-                    <div className="border-t border-slate-100 px-3 py-2 flex gap-1.5 flex-wrap">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="text-xs"
-                        {...(idx === 0 ? { "data-tour": "preview-btn" } : {})}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/preview/${quiz.id}`);
-                        }}
-                      >
-                        ▶ Превью
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="text-xs"
-                        loading={publishingId === quiz.id}
-                        onClick={(e) => void handlePublish(quiz, e)}
-                      >
-                        {status === "published" ? "☁ Обн." : "☁ Опубл."}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="text-xs"
-                        title="Показать рейтинг"
-                        onClick={(e) =>
-                          void handleLeaderboard(quiz.id, quiz.title, e)
-                        }
-                      >
-                        🏆
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        className="text-xs ml-auto"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm("Удалить этот квиз?"))
-                            deleteMutation.mutate(quiz.id);
-                        }}
-                      >
-                        ×
-                      </Button>
+                {/* Быстрый старт */}
+                <div className="bg-white rounded-3xl border border-slate-100 shadow-card p-6 flex flex-col justify-center gap-4">
+                  <h3 className="font-extrabold text-slate-800 text-[17px] mb-1">
+                    Быстрый старт
+                  </h3>
+
+                  <button
+                    className="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 text-left group"
+                    onClick={async () => {
+                      try {
+                        await openFileDialog({ multiple: false });
+                        showToast(
+                          "Файл выбран — импорт скоро будет готов",
+                          "info",
+                        );
+                      } catch {
+                        // cancelled
+                      }
+                    }}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+                      <FileArrowUp size={24} weight="duotone" />
                     </div>
+                    <div>
+                      <div className="text-[15px] font-bold text-slate-800 group-hover:text-orange-600 transition-colors">
+                        Загрузить файл
+                      </div>
+                      <div className="text-xs font-semibold text-slate-500 mt-0.5">
+                        Сделать тест из Word/PDF
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    className="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 text-left group"
+                    onClick={() => showToast("Шаблоны — скоро!", "info")}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+                      <FolderStar size={24} weight="duotone" />
+                    </div>
+                    <div>
+                      <div className="text-[15px] font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                        Взять шаблон
+                      </div>
+                      <div className="text-xs font-semibold text-slate-500 mt-0.5">
+                        Готовые по школьной программе
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    className="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 text-left group"
+                    onClick={() => {
+                      dismissWelcome();
+                      setCreateModalOpen(true);
+                    }}
+                    data-tour="new-quiz"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-primary-100 text-primary-600 flex items-center justify-center group-hover:scale-105 transition-transform text-2xl font-bold">
+                      +
+                    </div>
+                    <div>
+                      <div className="text-[15px] font-bold text-slate-800 group-hover:text-primary-600 transition-colors">
+                        Пустой квиз
+                      </div>
+                      <div className="text-xs font-semibold text-slate-500 mt-0.5">
+                        Добавить всё вручную
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Список квизов ───────────────────────────────────── */}
+              <div>
+                {/* Заголовок + фильтры */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 mb-6">
+                  <h1 className="text-[22px] font-extrabold text-slate-800 flex items-center gap-3">
+                    Ваши материалы
+                    <span className="px-3 py-1 rounded-xl bg-primary-50 text-primary-600 text-sm font-bold">
+                      {quizzes.length}
+                    </span>
+                  </h1>
+                  <div className="flex items-center gap-3 overflow-x-auto pb-2 md:pb-0">
+                    {/* Фильтр предметов */}
+                    <select
+                      value={filterSubject}
+                      onChange={(e) => setFilterSubject(e.target.value)}
+                      className="px-4 py-2.5 rounded-full bg-white border border-slate-200 text-slate-600 font-bold text-sm shadow-sm hover:border-primary-300 focus:outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-50 transition-all appearance-none cursor-pointer whitespace-nowrap"
+                    >
+                      <option value="">Все предметы</option>
+                      {allSubjects.map((s) => (
+                        <option key={s} value={s as string}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    {/* Фильтр класса */}
+                    <select
+                      value={filterGrade}
+                      onChange={(e) => setFilterGrade(e.target.value)}
+                      className="px-4 py-2.5 rounded-full bg-white border border-slate-200 text-slate-600 font-bold text-sm shadow-sm hover:border-primary-300 focus:outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-50 transition-all appearance-none cursor-pointer whitespace-nowrap"
+                    >
+                      <option value="">Любой класс</option>
+                      {allGrades.map((g) => (
+                        <option key={g} value={g as string}>
+                          {g} кл
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Загрузка */}
+                {isLoading && (
+                  <div className="flex justify-center py-24">
+                    <Spinner size="lg" />
+                  </div>
+                )}
+
+                {/* Пусто */}
+                {!isLoading && quizzes.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+                    <p className="text-lg font-semibold">Квизов пока нет.</p>
+                    <p className="text-sm mt-1">
+                      Введите тему выше или создайте пустой квиз.
+                    </p>
+                  </div>
+                )}
+
+                {/* Сетка карточек */}
+                {!isLoading && (
+                  <motion.div
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-12"
+                    initial="hidden"
+                    animate="visible"
+                    variants={{
+                      visible: { transition: { staggerChildren: 0.06 } },
+                      hidden: {},
+                    }}
+                  >
+                    {filteredQuizzes.map((quiz, idx) => {
+                      const pill =
+                        SUBJECT_PILL[quiz.subject ?? ""] ?? DEFAULT_PILL;
+                      const qCount = quiz.questions?.length ?? 0;
+                      const status =
+                        (quiz as Quiz & { status?: string }).status ?? "draft";
+                      const isPublished = status === "published";
+                      return (
+                        <motion.div
+                          key={quiz.id}
+                          variants={{
+                            hidden: { opacity: 0, y: 16 },
+                            visible: {
+                              opacity: 1,
+                              y: 0,
+                              transition: { duration: 0.28 },
+                            },
+                          }}
+                          {...(idx === 0 ? { "data-tour": "quiz-card" } : {})}
+                          className="group bg-white rounded-[20px] border border-slate-100 shadow-card hover:-translate-y-1 hover:shadow-[0_12px_30px_-8px_rgba(139,92,246,0.12)] hover:border-primary-100 transition-all duration-300 cursor-pointer flex flex-col min-h-60 p-6"
+                          onClick={() => navigate(`/editor/${quiz.id}`)}
+                        >
+                          {/* Шапка: предмет + класс */}
+                          <div className="flex justify-between items-start mb-4">
+                            <span
+                              className={`${pill.bg} ${pill.text} px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5`}
+                            >
+                              {pill.emoji} {quiz.subject ?? "Без предмета"}
+                            </span>
+                            {quiz.gradeLevel && (
+                              <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-xl">
+                                {quiz.gradeLevel} класс
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Название */}
+                          <h3 className="text-[18px] font-extrabold text-slate-800 leading-snug mb-2 group-hover:text-primary-600 transition-colors line-clamp-2">
+                            {quiz.title || "Без названия"}
+                          </h3>
+
+                          {/* Футер */}
+                          <div className="mt-auto pt-4 flex items-center justify-between">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[13px] font-bold text-slate-600 flex items-center gap-1.5">
+                                <ListNumbers
+                                  size={14}
+                                  className="text-slate-400"
+                                />
+                                {qCount} {pluralQ(qCount)}
+                              </span>
+                              {isPublished ? (
+                                <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                                  Опубликован
+                                </span>
+                              ) : (
+                                <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300 inline-block" />
+                                  Черновик
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Hover-действия */}
+                            <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                              <button
+                                {...(idx === 0
+                                  ? { "data-tour": "preview-btn" }
+                                  : {})}
+                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-primary-100 hover:text-primary-600 transition-colors"
+                                title="Превью"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/preview/${quiz.id}`);
+                                }}
+                              >
+                                ▶
+                              </button>
+                              <button
+                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-primary-100 hover:text-primary-600 transition-colors"
+                                title="Редактировать"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/editor/${quiz.id}`);
+                                }}
+                              >
+                                <PencilSimple size={16} />
+                              </button>
+                              <button
+                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-sky-100 hover:text-sky-600 transition-colors"
+                                title="Рейтинг"
+                                onClick={(e) =>
+                                  void handleLeaderboard(quiz.id, quiz.title, e)
+                                }
+                              >
+                                <Trophy size={16} />
+                              </button>
+                              <button
+                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-600 transition-colors"
+                                title={
+                                  isPublished ? "Обновить" : "Опубликовать"
+                                }
+                                disabled={publishingId === quiz.id}
+                                onClick={(e) => void handlePublish(quiz, e)}
+                              >
+                                ☁
+                              </button>
+                              <button
+                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:bg-red-100 hover:text-red-500 transition-colors"
+                                title="Удалить"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm("Удалить этот квиз?"))
+                                    deleteMutation.mutate(quiz.id);
+                                }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </motion.div>
-                );
-              })}
-            </motion.div>
-          )}
+                )}
+              </div>
+            </div>
+          </div>
         </main>
       </div>
       {/* ── Welcome overlay ──────────────────────────────────────────── */}
@@ -433,7 +679,7 @@ export function DashboardPage() {
                     dismissWelcome();
                     setCreateModalOpen(true);
                   }}
-                  className="relative rounded-2xl p-6 text-left overflow-hidden bg-gradient-to-br from-indigo-500 to-violet-600 text-white hover:scale-[1.02] active:scale-[0.98] transition-transform"
+                  className="relative rounded-2xl p-6 text-left overflow-hidden bg-linear-to-br from-indigo-500 to-violet-600 text-white hover:scale-[1.02] active:scale-[0.98] transition-transform"
                 >
                   <div className="text-3xl mb-3">✨</div>
                   <p className="font-bold text-lg leading-tight">
@@ -489,7 +735,7 @@ export function DashboardPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* AI hero section */}
-              <div className="bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 p-8 text-white">
+              <div className="bg-linear-to-br from-indigo-500 via-violet-500 to-purple-600 p-8 text-white">
                 <div className="text-4xl mb-3">✨</div>
                 <h2 className="text-2xl font-bold mb-1">Создать квиз с ИИ</h2>
                 <p className="text-indigo-200 text-sm">
@@ -642,11 +888,11 @@ export function DashboardPage() {
                               {crowns[podiumIdx]}
                             </span>
                             <div
-                              className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${PODIUM_BG[idx]} text-xl shadow-lg mb-1`}
+                              className={`flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br ${PODIUM_BG[idx]} text-xl shadow-lg mb-1`}
                             >
                               {PODIUM_EMOJIS[idx]}
                             </div>
-                            <p className="text-white text-xs font-semibold text-center leading-tight line-clamp-1 mb-1 max-w-[80px]">
+                            <p className="text-white text-xs font-semibold text-center leading-tight line-clamp-1 mb-1 max-w-20">
                               {s.playerName}
                             </p>
                             <p className="text-indigo-300 text-xs font-mono mb-2">
@@ -682,7 +928,7 @@ export function DashboardPage() {
                               #{i + 4}
                             </span>
                             <span
-                              className={`flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br ${PODIUM_BG[idx]} text-base shrink-0`}
+                              className={`flex h-7 w-7 items-center justify-center rounded-full bg-linear-to-br ${PODIUM_BG[idx]} text-base shrink-0`}
                             >
                               {PODIUM_EMOJIS[idx]}
                             </span>

@@ -128,7 +128,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
     <motion.div
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.35 } }}
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700"
+      className="fixed inset-0 z-100 flex flex-col items-center justify-center bg-linear-to-br from-indigo-600 via-violet-600 to-purple-700"
     >
       <motion.div
         initial={{ scale: 0.5, opacity: 0 }}
