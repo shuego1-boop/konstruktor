@@ -47,7 +47,7 @@ import {
   Plus,
   RadioButton,
   CheckSquareOffset,
-  ThumbsUpDown,
+  ToggleLeft,
   TextT,
   ArrowsLeftRight,
   SortAscending,
@@ -65,7 +65,7 @@ import Joyride, {
 const QUESTION_TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
   single_choice:   <RadioButton size={12} weight="bold" />,
   multiple_choice: <CheckSquareOffset size={12} weight="bold" />,
-  true_false:      <ThumbsUpDown size={12} weight="bold" />,
+  true_false:      <ToggleLeft size={12} weight="bold" />,
   text_input:      <TextT size={12} weight="bold" />,
   fill_blank:      <TextAlignLeft size={12} weight="bold" />,
   matching:        <ArrowsLeftRight size={12} weight="bold" />,
@@ -1898,7 +1898,7 @@ export function QuizEditorPage() {
         )}
         </aside>
 
-      </div> {/* конец рабочей области */} ────────────────────────────────────────────── */}
+      </div> {/* конец рабочей области */}
       {bgModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
