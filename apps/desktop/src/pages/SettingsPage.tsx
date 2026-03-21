@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+﻿import { useState } from "react";
 import {
   CloudArrowUp,
   MagicWand,
@@ -11,31 +11,37 @@ import {
   CaretRight,
   Check,
   SlidersHorizontal,
-} from '@phosphor-icons/react'
-import { Sidebar } from '../components/Sidebar.tsx'
+} from "@phosphor-icons/react";
+import { Sidebar } from "../components/Sidebar.tsx";
 
 export function SettingsPage() {
-  const [apiUrl, setApiUrl] = useState(() => localStorage.getItem('api_url') ?? '')
-  const [apiToken, setApiToken] = useState(() => localStorage.getItem('api_token') ?? '')
-  const [aiKey, setAiKey] = useState(() => localStorage.getItem('konstruktor_ai_key') ?? '')
-  const [savedSync, setSavedSync] = useState(false)
-  const [savedAi, setSavedAi] = useState(false)
-  const [showToken, setShowToken] = useState(false)
-  const [showAiKey, setShowAiKey] = useState(false)
+  const [apiUrl, setApiUrl] = useState(
+    () => localStorage.getItem("api_url") ?? "",
+  );
+  const [apiToken, setApiToken] = useState(
+    () => localStorage.getItem("api_token") ?? "",
+  );
+  const [aiKey, setAiKey] = useState(
+    () => localStorage.getItem("konstruktor_ai_key") ?? "",
+  );
+  const [savedSync, setSavedSync] = useState(false);
+  const [savedAi, setSavedAi] = useState(false);
+  const [showToken, setShowToken] = useState(false);
+  const [showAiKey, setShowAiKey] = useState(false);
 
   function handleSaveSync(e: React.FormEvent) {
-    e.preventDefault()
-    localStorage.setItem('api_url', apiUrl)
-    localStorage.setItem('api_token', apiToken)
-    setSavedSync(true)
-    setTimeout(() => setSavedSync(false), 2000)
+    e.preventDefault();
+    localStorage.setItem("api_url", apiUrl);
+    localStorage.setItem("api_token", apiToken);
+    setSavedSync(true);
+    setTimeout(() => setSavedSync(false), 2000);
   }
 
   function handleSaveAi(e: React.FormEvent) {
-    e.preventDefault()
-    localStorage.setItem('konstruktor_ai_key', aiKey)
-    setSavedAi(true)
-    setTimeout(() => setSavedAi(false), 2000)
+    e.preventDefault();
+    localStorage.setItem("konstruktor_ai_key", aiKey);
+    setSavedAi(true);
+    setTimeout(() => setSavedAi(false), 2000);
   }
 
   return (
@@ -60,11 +66,14 @@ export function SettingsPage() {
           <div className="p-10 w-full max-w-160">
             <h1 className="text-3xl font-extrabold text-slate-800 mb-8 flex items-center gap-3">
               Настройки
-              <SlidersHorizontal size={28} weight="duotone" className="text-slate-300" />
+              <SlidersHorizontal
+                size={28}
+                weight="duotone"
+                className="text-slate-300"
+              />
             </h1>
 
             <div className="flex flex-col gap-8">
-
               {/* Карточка 1: Облачная синхронизация */}
               <div className="bg-white rounded-3xl border border-slate-100 shadow-card p-8">
                 <div className="flex gap-4 items-start mb-6">
@@ -72,9 +81,12 @@ export function SettingsPage() {
                     <CloudArrowUp size={24} weight="duotone" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-extrabold text-slate-800">Облачная синхронизация</h2>
+                    <h2 className="text-xl font-extrabold text-slate-800">
+                      Облачная синхронизация
+                    </h2>
                     <p className="text-[14px] font-semibold text-slate-500 mt-1 leading-snug">
-                      Подключите школьную систему, чтобы оценки за квизы выставлялись автоматически.
+                      Подключите школьную систему, чтобы оценки за квизы
+                      выставлялись автоматически.
                     </p>
                   </div>
                 </div>
@@ -82,9 +94,15 @@ export function SettingsPage() {
                 <form onSubmit={handleSaveSync} className="space-y-5">
                   {/* URL API */}
                   <div>
-                    <label className="block text-[14px] font-extrabold text-slate-700 mb-2">URL API</label>
+                    <label className="block text-[14px] font-extrabold text-slate-700 mb-2">
+                      URL API
+                    </label>
                     <div className="flex items-center bg-slate-50 border border-slate-200 rounded-2xl pr-4 focus-within:bg-white focus-within:border-primary-300 focus-within:ring-4 focus-within:ring-primary-50 transition-all">
-                      <Link size={18} weight="bold" className="text-slate-400 ml-4 shrink-0" />
+                      <Link
+                        size={18}
+                        weight="bold"
+                        className="text-slate-400 ml-4 shrink-0"
+                      />
                       <input
                         type="url"
                         value={apiUrl}
@@ -97,11 +115,17 @@ export function SettingsPage() {
 
                   {/* Bearer токен */}
                   <div>
-                    <label className="block text-[14px] font-extrabold text-slate-700 mb-2">Bearer-токен</label>
+                    <label className="block text-[14px] font-extrabold text-slate-700 mb-2">
+                      Bearer-токен
+                    </label>
                     <div className="flex items-center bg-slate-50 border border-slate-200 rounded-2xl pr-2 focus-within:bg-white focus-within:border-primary-300 focus-within:ring-4 focus-within:ring-primary-50 transition-all">
-                      <Key size={18} weight="bold" className="text-slate-400 ml-4 shrink-0" />
+                      <Key
+                        size={18}
+                        weight="bold"
+                        className="text-slate-400 ml-4 shrink-0"
+                      />
                       <input
-                        type={showToken ? 'text' : 'password'}
+                        type={showToken ? "text" : "password"}
                         value={apiToken}
                         onChange={(e) => setApiToken(e.target.value)}
                         placeholder="eyJ..."
@@ -143,20 +167,29 @@ export function SettingsPage() {
                     <MagicWand size={24} weight="duotone" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-extrabold text-slate-800">AI-генерация</h2>
+                    <h2 className="text-xl font-extrabold text-slate-800">
+                      AI-генерация
+                    </h2>
                     <p className="text-[14px] font-semibold text-slate-500 mt-1 leading-snug">
-                      Введите ключ от нейросети, чтобы умный помощник создавал вопросы за секунды.
+                      Введите ключ от нейросети, чтобы умный помощник создавал
+                      вопросы за секунды.
                     </p>
                   </div>
                 </div>
 
                 <form onSubmit={handleSaveAi} className="space-y-5">
                   <div>
-                    <label className="block text-[14px] font-extrabold text-slate-700 mb-2">API-ключ</label>
+                    <label className="block text-[14px] font-extrabold text-slate-700 mb-2">
+                      API-ключ
+                    </label>
                     <div className="flex items-center bg-slate-50 border border-slate-200 rounded-2xl pr-2 focus-within:bg-white focus-within:border-primary-300 focus-within:ring-4 focus-within:ring-primary-50 transition-all">
-                      <LockKey size={18} weight="bold" className="text-slate-400 ml-4 shrink-0" />
+                      <LockKey
+                        size={18}
+                        weight="bold"
+                        className="text-slate-400 ml-4 shrink-0"
+                      />
                       <input
-                        type={showAiKey ? 'text' : 'password'}
+                        type={showAiKey ? "text" : "password"}
                         value={aiKey}
                         onChange={(e) => setAiKey(e.target.value)}
                         placeholder="sk-aitunnel-..."
@@ -190,12 +223,10 @@ export function SettingsPage() {
                   </div>
                 </form>
               </div>
-
             </div>
           </div>
         </div>
       </main>
     </div>
-  )
+  );
 }
-

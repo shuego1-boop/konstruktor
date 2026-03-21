@@ -424,7 +424,7 @@ export function PreviewPage() {
         style={{ height: "100vh", overflow: "hidden" }}
       >
         {/* ── Glass header (playing / feedback) ─────────────────────── */}
-        {(state === "playing" || state === "feedback") ? (
+        {state === "playing" || state === "feedback" ? (
           <header
             style={{
               background: "rgba(15,23,42,0.45)",
@@ -648,12 +648,26 @@ export function PreviewPage() {
                     }}
                   >
                     <svg
-                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                      }}
                       viewBox="0 0 100 100"
                     >
-                      <circle cx="50" cy="50" r="45" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
                       <circle
-                        cx="50" cy="50" r="45"
+                        cx="50"
+                        cy="50"
+                        r="45"
+                        fill="rgba(0,0,0,0.3)"
+                        stroke="rgba(255,255,255,0.1)"
+                        strokeWidth="6"
+                      />
+                      <circle
+                        cx="50"
+                        cy="50"
+                        r="45"
                         fill="none"
                         stroke={timerColor}
                         strokeWidth="6"
@@ -663,7 +677,8 @@ export function PreviewPage() {
                         style={{
                           transform: "rotate(-90deg)",
                           transformOrigin: "50% 50%",
-                          transition: "stroke-dashoffset 0.1s linear, stroke 0.5s ease",
+                          transition:
+                            "stroke-dashoffset 0.1s linear, stroke 0.5s ease",
                           filter: `drop-shadow(0 0 8px ${timerGlow})`,
                         }}
                       />
@@ -1850,10 +1865,12 @@ export function PreviewPage() {
                         style={{
                           background: "#ffffff",
                           color: "#0f172a",
-                          boxShadow: "0 10px 40px rgba(255,255,255,0.18), 0 4px 16px rgba(0,0,0,0.3)",
+                          boxShadow:
+                            "0 10px 40px rgba(255,255,255,0.18), 0 4px 16px rgba(0,0,0,0.3)",
                           border: "none",
                           borderRadius: 9999,
-                          padding: "clamp(10px,1.6vh,14px) clamp(20px,3vw,40px)",
+                          padding:
+                            "clamp(10px,1.6vh,14px) clamp(20px,3vw,40px)",
                           fontSize: "clamp(0.9rem,1.6vw,1.1rem)",
                           fontWeight: 900,
                           cursor: "pointer",
@@ -1867,15 +1884,18 @@ export function PreviewPage() {
                         onMouseEnter={(e) => {
                           const b = e.currentTarget as HTMLButtonElement;
                           b.style.transform = "scale(1.06)";
-                          b.style.boxShadow = "0 14px 50px rgba(255,255,255,0.25), 0 6px 20px rgba(0,0,0,0.35)";
+                          b.style.boxShadow =
+                            "0 14px 50px rgba(255,255,255,0.25), 0 6px 20px rgba(0,0,0,0.35)";
                         }}
                         onMouseLeave={(e) => {
                           const b = e.currentTarget as HTMLButtonElement;
                           b.style.transform = "scale(1)";
-                          b.style.boxShadow = "0 10px 40px rgba(255,255,255,0.18), 0 4px 16px rgba(0,0,0,0.3)";
+                          b.style.boxShadow =
+                            "0 10px 40px rgba(255,255,255,0.18), 0 4px 16px rgba(0,0,0,0.3)";
                         }}
                       >
-                        Следующий вопрос <span style={{ fontSize: "1.1em" }}>→</span>
+                        Следующий вопрос{" "}
+                        <span style={{ fontSize: "1.1em" }}>→</span>
                       </button>
                     </div>
                   )}

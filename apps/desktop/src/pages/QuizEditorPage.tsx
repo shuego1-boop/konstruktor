@@ -1571,7 +1571,7 @@ export function QuizEditorPage() {
             Вопросы ({quiz?.questions.length ?? 0})
           </h3>
         </div>
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2" data-tour="editor-questions">
           {quiz && (
             <DndContext
               sensors={sensors}

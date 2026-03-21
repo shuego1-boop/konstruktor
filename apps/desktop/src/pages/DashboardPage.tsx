@@ -275,7 +275,7 @@ export function DashboardPage() {
         <main className="flex-1 flex flex-col min-w-0">
           {/* Верхняя панель */}
           <header className="h-18 px-8 flex items-center justify-between z-10 sticky top-0 bg-[#FAFAFA]/80 backdrop-blur-xl border-b border-slate-200/50 shrink-0">
-            <div className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
+            <div data-tour="header-title" className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
               <span className="text-slate-400">Рабочее пространство</span>
               <CaretRight size={12} weight="bold" className="text-slate-300" />
               <span>Мои квизы</span>
@@ -299,6 +299,7 @@ export function DashboardPage() {
               </div>
               {/* Колокол */}
               <button
+                data-tour="tour-btn"
                 className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-primary-600 hover:border-primary-200 transition-all shadow-sm"
                 onClick={() => showToast("Уведомлений пока нет", "info")}
               >
@@ -616,6 +617,9 @@ export function DashboardPage() {
                                 <Trophy size={16} />
                               </button>
                               <button
+                                {...(idx === 0
+                                  ? { "data-tour": "export-btn" }
+                                  : {})}
                                 className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-600 transition-colors"
                                 title={
                                   isPublished ? "Обновить" : "Опубликовать"
