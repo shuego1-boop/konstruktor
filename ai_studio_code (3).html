@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaaS Квизы — Дружелюбный Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Nunito — идеальный шрифт для EdTech. Округлый, добрый, но отлично читаемый -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Nunito', 'sans-serif'] },
+                    colors: {
+                        primary: { 50: '#f5f3ff', 100: '#ede9fe', 500: '#8b5cf6', 600: '#7c3aed', 900: '#4c1d95' }, // Сочный фиолетовый
+                        peach: { 50: '#fff7ed', 100: '#ffedd5', 500: '#f97316' }, // Теплый персиковый
+                        mint: { 50: '#ecfdf5', 500: '#10b981' } // Мягкий мятный
+                    },
+                    boxShadow: {
+                        'soft': '0 10px 40px -10px rgba(139, 92, 246, 0.08)',
+                        'card': '0 4px 20px -2px rgba(0, 0, 0, 0.03), 0 0 3px rgba(0,0,0,0.02)',
+                        'input': '0 8px 25px -5px rgba(139, 92, 246, 0.12)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #FAFAFA; } /* Очень мягкий, теплый белый фон */
+        
+        /* Карточки стали более "пухлыми" и приятными на ощупь */
+        .friendly-card {
+            background: #FFFFFF;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03), 0 0 3px rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .friendly-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 30px -8px rgba(139, 92, 246, 0.12);
+            border-color: rgba(139, 92, 246, 0.1);
+        }
+
+        /* Сочный, но нежный фон для ИИ-блока */
+        .magic-banner {
+            background: linear-gradient(135deg, #F3E8FF 0%, #FFE4E6 50%, #E0E7FF 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .magic-banner::before {
+            content: ''; position: absolute; top: -50%; left: -10%; width: 50%; height: 150%;
+            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+            transform: rotate(30deg); pointer-events: none;
+        }
+
+        /* Мягкий скроллбар */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 20px; border: 2px solid #FAFAFA;}
+        ::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
+    </style>
+</head>
+<body class="text-slate-800 h-screen overflow-hidden flex antialiased selection:bg-primary-100 selection:text-primary-900">
+
+    <!-- ЛЕВАЯ НАВИГАЦИЯ -->
+    <aside class="w-64 h-full flex flex-col flex-shrink-0 z-20 bg-white border-r border-slate-100 shadow-[4px_0_24px_rgba(0,0,0,0.01)]">
+        <!-- Логотип -->
+        <div class="h-[72px] flex items-center px-6">
+            <div class="flex items-center gap-3 text-slate-900 cursor-pointer hover:opacity-80 transition-opacity">
+                <div class="w-9 h-9 rounded-[14px] bg-gradient-to-br from-primary-500 to-purple-500 flex items-center justify-center text-white shadow-sm">
+                    <i class="ph-bold ph-lightbulb text-xl"></i>
+                </div>
+                <span class="text-2xl font-extrabold tracking-tight">Квиз<span class="text-primary-600">ОК</span></span>
+            </div>
+        </div>
+        
+        <!-- Меню (более просторное) -->
+        <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-50 hover:text-primary-600 transition-colors font-bold text-[15px] group">
+                <i class="ph-duotone ph-house text-2xl text-slate-400 group-hover:text-primary-500 transition-colors"></i> Главная
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-2xl bg-primary-50 text-primary-700 font-bold text-[15px] transition-colors group">
+                <i class="ph-duotone ph-books text-2xl text-primary-600"></i> Мои квизы
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-50 hover:text-primary-600 transition-colors font-bold text-[15px] group">
+                <i class="ph-duotone ph-users-three text-2xl text-slate-400 group-hover:text-primary-500 transition-colors"></i> Ученики
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-50 hover:text-primary-600 transition-colors font-bold text-[15px] group">
+                <i class="ph-duotone ph-chart-line-up text-2xl text-slate-400 group-hover:text-primary-500 transition-colors"></i> Результаты
+            </a>
+            
+            <div class="pt-6 pb-2 px-4">
+                <p class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest">Инструменты</p>
+            </div>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-50 hover:text-primary-600 transition-colors font-bold text-[15px] group">
+                <i class="ph-duotone ph-files text-2xl text-slate-400 group-hover:text-primary-500 transition-colors"></i> Библиотека
+            </a>
+        </nav>
+        
+        <!-- Профиль -->
+        <div class="p-4 border-t border-slate-50 mb-2">
+            <button class="w-full flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors text-left border border-transparent hover:border-slate-100">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <img src="https://i.pravatar.cc/100?img=5" alt="Профиль" class="w-10 h-10 rounded-full bg-slate-200 object-cover">
+                    <div class="truncate">
+                        <div class="text-[15px] font-bold text-slate-800 truncate">Елена В.</div>
+                        <div class="text-xs font-semibold text-slate-400 truncate">Учитель биологии</div>
+                    </div>
+                </div>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ОСНОВНАЯ ОБЛАСТЬ -->
+    <main class="flex-1 flex flex-col h-full min-w-0 relative">
+        
+        <!-- Верхняя панель -->
+        <header class="h-[72px] px-8 flex items-center justify-between z-10 sticky top-0 bg-[#FAFAFA]/80 backdrop-blur-xl border-b border-slate-200/50">
+            <div class="flex items-center gap-2 text-[15px] font-bold text-slate-800">
+                <span class="text-slate-400">Рабочее пространство</span>
+                <i class="ph-bold ph-caret-right text-slate-300 text-xs"></i>
+                <span>Мои квизы</span>
+            </div>
+            
+            <div class="flex items-center gap-5">
+                <!-- Округлый, дружелюбный поиск -->
+                <div class="relative w-64 lg:w-80 group hidden sm:block">
+                    <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-500 transition-colors"></i>
+                    <input type="text" placeholder="Найти квиз или тему..." class="w-full bg-white border border-slate-200 focus:bg-white focus:border-primary-300 focus:ring-4 focus:ring-primary-50 rounded-full py-2.5 pl-11 pr-4 text-sm font-semibold outline-none transition-all placeholder:text-slate-400 shadow-sm">
+                </div>
+                <button class="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-primary-600 hover:border-primary-200 transition-all relative shadow-sm">
+                    <i class="ph-fill ph-bell text-xl"></i>
+                    <span class="absolute top-0 right-0 w-3 h-3 bg-red-500 border-2 border-white rounded-full"></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- СКРОЛЛИРУЕМЫЙ КОНТЕНТ -->
+        <div class="flex-1 overflow-y-auto">
+            <div class="max-w-7xl mx-auto p-8 flex flex-col gap-8">
+                
+                <!-- ВЕРХНИЙ БЛОК: Дружелюбный ИИ и действия -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Магический баннер (ИИ) - 2 колонки -->
+                    <div class="magic-banner lg:col-span-2 rounded-[28px] p-8 flex flex-col justify-center border border-white shadow-soft">
+                        <div class="relative z-10 flex items-start gap-6">
+                            <div class="w-16 h-16 rounded-[20px] bg-white/60 backdrop-blur-sm flex items-center justify-center text-primary-600 flex-shrink-0 shadow-sm border border-white/80">
+                                <i class="ph-duotone ph-magic-wand text-3xl"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h2 class="text-2xl font-extrabold text-slate-800 mb-1.5">Что создадим сегодня? ✨</h2>
+                                <p class="text-slate-600 text-[15px] font-medium mb-5">Напишите тему урока или вставьте кусок текста, а я соберу из этого готовый квиз.</p>
+                                
+                                <!-- Большой, пухлый и понятный инпут -->
+                                <div class="relative flex items-center bg-white rounded-2xl p-1.5 shadow-input border border-primary-100 focus-within:ring-4 focus-within:ring-primary-50 transition-all">
+                                    <input type="text" placeholder="Например: Тест на 10 вопросов по строению цветка..." class="w-full bg-transparent text-slate-800 placeholder:text-slate-400 text-[15px] font-semibold px-4 py-3 outline-none">
+                                    <button class="absolute right-2 bg-primary-600 hover:bg-primary-500 text-white font-bold text-[15px] px-6 py-2.5 rounded-xl transition-transform active:scale-95 shadow-md flex items-center gap-2">
+                                        Придумать <i class="ph-bold ph-paper-plane-tilt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Карточка быстрых действий (более сочная) -->
+                    <div class="friendly-card p-6 flex flex-col justify-center gap-4">
+                        <h3 class="font-extrabold text-slate-800 text-[17px] mb-1">Быстрый старт</h3>
+                        
+                        <button class="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 text-left group">
+                            <div class="w-12 h-12 rounded-[16px] bg-orange-100 text-orange-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                <i class="ph-duotone ph-file-arrow-up text-2xl"></i>
+                            </div>
+                            <div>
+                                <div class="text-[15px] font-bold text-slate-800 group-hover:text-orange-600 transition-colors">Загрузить файл</div>
+                                <div class="text-xs font-semibold text-slate-500 mt-0.5">Сделать тест из Word/PDF</div>
+                            </div>
+                        </button>
+                        
+                        <button class="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 text-left group">
+                            <div class="w-12 h-12 rounded-[16px] bg-blue-100 text-blue-500 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                <i class="ph-duotone ph-folder-star text-2xl"></i>
+                            </div>
+                            <div>
+                                <div class="text-[15px] font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Взять шаблон</div>
+                                <div class="text-xs font-semibold text-slate-500 mt-0.5">Готовые по школьной программе</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- БЛОК С КВИЗАМИ -->
+                <div>
+                    <!-- Заголовок и мягкие фильтры-кнопки -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-5 mb-6">
+                        <h1 class="text-[22px] font-extrabold text-slate-800 flex items-center gap-3">
+                            Ваши материалы
+                            <span class="px-3 py-1 rounded-xl bg-primary-50 text-primary-600 text-sm font-bold">12</span>
+                        </h1>
+                        
+                        <!-- Вместо серых дропдаунов — милые селекторы -->
+                        <div class="flex items-center gap-3 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                            <button class="px-5 py-2.5 rounded-full bg-white border border-slate-200 text-slate-600 font-bold text-sm shadow-sm hover:border-primary-300 hover:text-primary-600 transition-all flex items-center gap-2 whitespace-nowrap">
+                                <div class="w-2.5 h-2.5 rounded-full bg-primary-400"></div> Все предметы <i class="ph-bold ph-caret-down text-xs text-slate-400"></i>
+                            </button>
+                            <button class="px-5 py-2.5 rounded-full bg-white border border-slate-200 text-slate-600 font-bold text-sm shadow-sm hover:border-primary-300 hover:text-primary-600 transition-all flex items-center gap-2 whitespace-nowrap">
+                                Любой класс <i class="ph-bold ph-caret-down text-xs text-slate-400"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- СЕТКА КАРТОЧЕК -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-12">
+                        
+                        <!-- Карточка: Создать руками -->
+                        <button class="friendly-card flex flex-col items-center justify-center text-center p-6 border-dashed border-2 border-slate-200 bg-transparent hover:bg-primary-50/50 hover:border-primary-300 min-h-[240px] group transition-all">
+                            <div class="w-16 h-16 rounded-[20px] bg-slate-100 text-slate-500 flex items-center justify-center mb-4 group-hover:bg-primary-100 group-hover:text-primary-600 group-hover:scale-110 transition-all">
+                                <i class="ph-bold ph-plus text-2xl"></i>
+                            </div>
+                            <span class="text-[17px] font-extrabold text-slate-800 mb-1">Пустой квиз</span>
+                            <span class="text-[13px] font-semibold text-slate-500">Добавить всё вручную</span>
+                        </button>
+
+                        <!-- Карточка 1: Биология (Мятно-зеленый акцент) -->
+                        <div class="friendly-card p-6 flex flex-col cursor-pointer group min-h-[240px]">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5">
+                                    🌿 Биология
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-xl">
+                                    8 класс
+                                </div>
+                            </div>
+                            
+                            <h3 class="text-[18px] font-extrabold text-slate-800 leading-snug mb-2 group-hover:text-primary-600 transition-colors line-clamp-2">Клеточное строение организмов</h3>
+                            
+                            <div class="mt-auto pt-4 flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-[13px] font-bold text-slate-600 flex items-center gap-1.5"><i class="ph-bold ph-list-numbers text-slate-400"></i> 15 вопросов</span>
+                                    <span class="text-[11px] font-semibold text-emerald-600 flex items-center gap-1"><div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> Опубликован</span>
+                                </div>
+                                <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
+                                    <button class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-primary-100 hover:text-primary-600 transition-colors"><i class="ph-bold ph-pencil-simple"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Карточка 2: Литература (Персиковый акцент) -->
+                        <div class="friendly-card p-6 flex flex-col cursor-pointer group min-h-[240px]">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="bg-orange-50 text-orange-600 px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5">
+                                    📚 Литература
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-xl">
+                                    11 класс
+                                </div>
+                            </div>
+                            
+                            <h3 class="text-[18px] font-extrabold text-slate-800 leading-snug mb-2 group-hover:text-orange-500 transition-colors line-clamp-2">Поэзия Серебряного века</h3>
+                            
+                            <div class="mt-auto pt-4 flex items-center justify-between">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-[13px] font-bold text-slate-600 flex items-center gap-1.5"><i class="ph-bold ph-list-numbers text-slate-400"></i> 20 вопросов</span>
+                                    <span class="text-[11px] font-semibold text-slate-400 flex items-center gap-1"><div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Черновик (вчера)</span>
+                                </div>
+                                <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
+                                    <button class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-orange-100 hover:text-orange-600 transition-colors"><i class="ph-bold ph-pencil-simple"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Карточка 3: Математика (Голубой акцент) -->
+                        <div class="friendly-card p-6 flex flex-col cursor-pointer group min-h-[240px]">
+                            <div class="flex justify-between items-start mb-4">
+                                <div class="bg-sky-50 text-sky-600 px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5">
+                                    📐 Математика
+                                </div>
+                                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1.5 rounded-xl">
+                                    9 класс
+                                </div>
+                            </div>
+                            
+                            <h3 class="text-[18px] font-extrabold text-slate-800 leading-snug mb-2 group-hover:text-sky-500 transition-colors line-clamp-2">Квадратные уравнения и теорема Виета</h3>
+                            
+                            <!-- Мини-статистика в карточке -->
+                            <div class="mt-2 flex items-center gap-2">
+                                <div class="flex -space-x-1.5">
+                                    <div class="w-6 h-6 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-blue-600">А</div>
+                                    <div class="w-6 h-6 rounded-full bg-pink-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-pink-600">М</div>
+                                </div>
+                                <span class="text-[11px] font-bold text-slate-500">12 сдали</span>
+                            </div>
+                            
+                            <div class="mt-auto pt-3 flex items-center justify-between border-t border-slate-50">
+                                <div class="flex flex-col gap-1">
+                                    <span class="text-[13px] font-bold text-slate-600 flex items-center gap-1.5"><i class="ph-bold ph-list-numbers text-slate-400"></i> 8 вопросов</span>
+                                </div>
+                                <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
+                                    <button class="px-3 h-9 flex items-center justify-center rounded-xl bg-sky-50 text-sky-600 font-bold text-xs hover:bg-sky-100 transition-colors">Отчёты</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>

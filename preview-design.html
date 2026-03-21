@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaaS Квизы — Premium Presentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Nunito', 'sans-serif'] },
+                    animation: {
+                        'spin-slow': 'spin 15s linear infinite',
+                        'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
+                        'pulse-glow': 'pulseGlow 2s infinite'
+                    },
+                    keyframes: {
+                        shake: {
+                            '10%, 90%': { transform: 'translate3d(-2px, 0, 0)' },
+                            '20%, 80%': { transform: 'translate3d(4px, 0, 0)' },
+                            '30%, 50%, 70%': { transform: 'translate3d(-8px, 0, 0)' },
+                            '40%, 60%': { transform: 'translate3d(8px, 0, 0)' }
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.4))' },
+                            '50%': { filter: 'drop-shadow(0 0 30px rgba(255,255,255,0.8))' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Строгое ограничение экрана, никакого скролла */
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #0f172a; color: white; }
+
+        /* Живой премиальный фон (Animated Mesh Gradient) */
+        .mesh-bg {
+            position: absolute; inset: -50%; z-index: 0;
+            background: 
+                radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.15), transparent 60%),
+                radial-gradient(circle at 80% 20%, rgba(56, 189, 248, 0.15), transparent 50%),
+                radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.15), transparent 50%);
+            animation: spin-slow 20s linear infinite alternate;
+            pointer-events: none;
+        }
+
+        /* Матовое стекло (Glassmorphism) */
+        .glass-header {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Тайлы ответов: Идеально вписываются во flex-контейнер */
+        .answer-tile {
+            position: relative; overflow: hidden;
+            border: 2px solid rgba(255,255,255,0.1);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 20px rgba(0,0,0,0.2);
+            display: flex; align-items: stretch;
+        }
+        
+        /* Блик, пробегающий по кнопке при наведении */
+        .answer-tile::after {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.15), transparent);
+            transform: skewX(-20deg); transition: none; pointer-events: none;
+        }
+        .answer-tile:hover::after { left: 200%; transition: left 0.7s ease-in-out; }
+        .answer-tile:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.3); box-shadow: 0 15px 30px rgba(0,0,0,0.4); }
+        .answer-tile:active { transform: translateY(1px); }
+
+        /* Цветовые схемы ответов (Сочные, но не кислотные) */
+        .tile-a { background: linear-gradient(145deg, #e11d48, #9f1239); } /* Ruby */
+        .tile-b { background: linear-gradient(145deg, #2563eb, #1e3a8a); } /* Sapphire */
+        .tile-c { background: linear-gradient(145deg, #d97706, #92400e); } /* Amber */
+        .tile-d { background: linear-gradient(145deg, #059669, #064e3b); } /* Emerald */
+
+        /* Буква ответа (A, B, C, D) */
+        .tile-letter {
+            background: rgba(0,0,0,0.2); border-right: 1px solid rgba(255,255,255,0.1);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 900; font-size: 1.75rem; width: 80px; flex-shrink: 0;
+            box-shadow: inset -5px 0 10px rgba(0,0,0,0.1);
+        }
+
+        /* === СОСТОЯНИЯ ПОСЛЕ КЛИКА === */
+        .revealed .answer-tile { pointer-events: none; }
+        
+        /* Правильный ответ */
+        .revealed .is-correct {
+            border-color: #ffffff;
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.4), inset 0 0 20px rgba(255,255,255,0.3);
+            transform: scale(1.02); z-index: 10;
+        }
+        /* Неправильные ответы */
+        .revealed .is-wrong {
+            opacity: 0.25; filter: grayscale(100%); transform: scale(0.98); border-color: transparent;
+        }
+        /* Тот неправильный, на который мы кликнули */
+        .revealed .selected.is-wrong {
+            opacity: 0.9; filter: grayscale(0%); border-color: #ef4444;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.4);
+            animation: shake 0.4s;
+        }
+
+        /* Круговой таймер (SVG) */
+        .timer-circle {
+            transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+            transform: rotate(-90deg); transform-origin: 50% 50%;
+        }
+        
+        /* Балансировка текста (чтобы вопрос не висел одной сиротой-словом на новой строке) */
+        .text-balance { text-wrap: balance; }
+    </style>
+</head>
+<body class="flex flex-col relative antialiased selection:bg-emerald-500/30 selection:text-emerald-100">
+
+    <!-- Анимированный фон -->
+    <div class="mesh-bg"></div>
+    <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-20 z-0 pointer-events-none"></div>
+
+    <!-- ВЕРХНЯЯ ПАНЕЛЬ (10vh) -->
+    <header class="glass-header h-[10vh] min-h-[70px] px-8 flex items-center justify-between w-full relative z-20 flex-shrink-0">
+        <button class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-white/80 hover:text-white font-bold text-sm">
+            <i class="ph-bold ph-x text-lg"></i> Завершить
+        </button>
+        
+        <!-- Прогресс (Точный и аккуратный) -->
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3 bg-black/30 px-5 py-2 rounded-xl border border-white/5 shadow-inner">
+                <span class="text-[13px] font-extrabold text-white/50 uppercase tracking-widest">Вопрос 5 <span class="text-white/30">/ 15</span></span>
+                <div class="w-1.5 h-1.5 rounded-full bg-white/20"></div>
+                <span class="text-[13px] font-extrabold text-emerald-400">100 очков</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ОСНОВНАЯ ЗОНА (90vh) -->
+    <main class="relative z-10 flex-1 flex flex-col w-full max-w-6xl mx-auto px-6 pb-8">
+
+        <!-- ВЕРХНЯЯ ЧАСТЬ: Таймер и Вопрос (≈45vh) -->
+        <div class="flex-1 flex flex-col items-center justify-center gap-6 relative w-full">
+            
+            <!-- Круговой SVG Таймер -->
+            <div class="relative w-24 h-24 flex items-center justify-center">
+                <svg class="absolute inset-0 w-full h-full drop-shadow-xl" viewBox="0 0 100 100">
+                    <!-- Фоновый круг -->
+                    <circle cx="50" cy="50" r="45" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+                    <!-- Индикатор времени (Длина окружности = 2 * PI * 45 = 282.7) -->
+                    <circle id="timer-path" class="timer-circle" cx="50" cy="50" r="45" fill="none" stroke="#10b981" stroke-width="6" stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="0"/>
+                </svg>
+                <span id="time-left" class="text-3xl font-black text-white relative z-10 tracking-tighter shadow-black drop-shadow-md">20</span>
+            </div>
+
+            <!-- Текст вопроса (Адаптивный, сбалансированный) -->
+            <div class="w-full px-4 text-center">
+                <h1 class="text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight text-balance drop-shadow-2xl">
+                    Какие из перечисленных органоидов являются двумембранными?
+                </h1>
+            </div>
+        </div>
+
+        <!-- НИЖНЯЯ ЧАСТЬ: Сетка ответов (Строго 40vh, 2x2) -->
+        <div class="h-[40vh] min-h-[280px] w-full grid grid-cols-1 md:grid-cols-2 grid-rows-4 md:grid-rows-2 gap-4" id="answers-grid">
+            
+            <!-- Ответ A (Неверный) -->
+            <button onclick="checkAnswer(this, false)" class="answer-tile tile-a rounded-2xl group">
+                <div class="tile-letter">A</div>
+                <div class="flex-1 flex items-center justify-between px-6 py-4">
+                    <span class="text-lg md:text-xl font-bold text-white text-left leading-snug drop-shadow-md">Рибосомы и лизосомы</span>
+                    <div class="w-10 h-10 rounded-full bg-black/20 flex items-center justify-center result-icon opacity-0 transition-opacity">
+                        <i class="ph-bold ph-x text-xl text-white"></i>
+                    </div>
+                </div>
+            </button>
+
+            <!-- Ответ B (Неверный) -->
+            <button onclick="checkAnswer(this, false)" class="answer-tile tile-b rounded-2xl group">
+                <div class="tile-letter">B</div>
+                <div class="flex-1 flex items-center justify-between px-6 py-4">
+                    <span class="text-lg md:text-xl font-bold text-white text-left leading-snug drop-shadow-md">Комплекс Гольджи</span>
+                    <div class="w-10 h-10 rounded-full bg-black/20 flex items-center justify-center result-icon opacity-0 transition-opacity">
+                        <i class="ph-bold ph-x text-xl text-white"></i>
+                    </div>
+                </div>
+            </button>
+
+            <!-- Ответ C (Неверный) -->
+            <button onclick="checkAnswer(this, false)" class="answer-tile tile-c rounded-2xl group">
+                <div class="tile-letter">C</div>
+                <div class="flex-1 flex items-center justify-between px-6 py-4">
+                    <span class="text-lg md:text-xl font-bold text-white text-left leading-snug drop-shadow-md">Эндоплазматическая сеть</span>
+                    <div class="w-10 h-10 rounded-full bg-black/20 flex items-center justify-center result-icon opacity-0 transition-opacity">
+                        <i class="ph-bold ph-x text-xl text-white"></i>
+                    </div>
+                </div>
+            </button>
+
+            <!-- Ответ D (ПРАВИЛЬНЫЙ) -->
+            <button onclick="checkAnswer(this, true)" class="answer-tile tile-d is-correct rounded-2xl group">
+                <div class="tile-letter">D</div>
+                <div class="flex-1 flex items-center justify-between px-6 py-4">
+                    <span class="text-lg md:text-xl font-bold text-white text-left leading-snug drop-shadow-md">Митохондрии и пластиды</span>
+                    <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center result-icon opacity-0 transition-opacity shadow-[0_0_20px_rgba(255,255,255,0.5)]">
+                        <i class="ph-bold ph-check text-2xl text-emerald-600"></i>
+                    </div>
+                </div>
+            </button>
+
+        </div>
+        
+    </main>
+
+    <!-- Кнопка "Далее" (Плавающая, по центру) -->
+    <div id="next-btn-container" class="fixed bottom-12 left-1/2 -translate-x-1/2 z-50 opacity-0 pointer-events-none transition-all duration-500 translate-y-8">
+        <button onclick="resetQuestion()" class="flex items-center gap-3 px-8 py-3.5 rounded-full bg-white text-slate-900 font-black text-lg shadow-[0_10px_40px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-transform animate-pulse-glow">
+            Следующий вопрос <i class="ph-bold ph-arrow-right text-xl"></i>
+        </button>
+    </div>
+
+    <!-- ИНТЕРАКТИВНАЯ ЛОГИКА (JS) -->
+    <script>
+        const TOTAL_TIME = 20; // 20 секунд на вопрос
+        let timeLeft = TOTAL_TIME;
+        let timerInterval;
+
+        window.onload = startTimer;
+
+        function startTimer() {
+            timeLeft = TOTAL_TIME;
+            const display = document.getElementById('time-left');
+            const path = document.getElementById('timer-path');
+            
+            // Сброс UI таймера
+            display.innerText = timeLeft;
+            display.classList.remove('text-red-400');
+            path.style.stroke = '#10b981'; // Изумрудный цвет
+            path.style.strokeDashoffset = '0';
+            
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                display.innerText = timeLeft;
+
+                // Обновление SVG круга (Длина окружности 283)
+                const offset = 283 - (timeLeft / TOTAL_TIME) * 283;
+                path.style.strokeDashoffset = offset;
+
+                // Тревожное состояние (Меньше 5 сек)
+                if(timeLeft <= 5 && timeLeft > 0) {
+                    display.classList.add('text-red-400');
+                    path.style.stroke = '#ef4444'; // Красный цвет
+                }
+
+                // Время вышло
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    display.innerText = "0";
+                    path.style.strokeDashoffset = '283';
+                    revealAnswers();
+                }
+            }, 1000);
+        }
+
+        // Логика клика
+        function checkAnswer(btnElement, isCorrect) {
+            const grid = document.getElementById('answers-grid');
+            if(grid.classList.contains('revealed')) return; // Блокировка
+
+            clearInterval(timerInterval);
+            btnElement.classList.add('selected');
+            revealAnswers();
+        }
+
+        // Показ результатов
+        function revealAnswers() {
+            const grid = document.getElementById('answers-grid');
+            grid.classList.add('revealed'); // Включает CSS-анимации состояний
+
+            // Показываем иконки галочек/крестиков внутри карточек
+            document.querySelectorAll('.result-icon').forEach(icon => {
+                icon.classList.remove('opacity-0');
+            });
+
+            // Показываем кнопку "Далее"
+            const nextBtn = document.getElementById('next-btn-container');
+            nextBtn.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-8');
+            nextBtn.classList.add('opacity-100', 'translate-y-0');
+        }
+
+        // Переход к следующему вопросу
+        function resetQuestion() {
+            const grid = document.getElementById('answers-grid');
+            
+            // Сброс состояний
+            grid.classList.remove('revealed');
+            document.querySelectorAll('.answer-tile').forEach(tile => {
+                tile.classList.remove('selected');
+            });
+            document.querySelectorAll('.result-icon').forEach(icon => {
+                icon.classList.add('opacity-0');
+            });
+
+            // Скрываем кнопку "Далее"
+            const nextBtn = document.getElementById('next-btn-container');
+            nextBtn.classList.add('opacity-0', 'pointer-events-none', 'translate-y-8');
+            nextBtn.classList.remove('opacity-100', 'translate-y-0');
+            
+            startTimer();
+        }
+    </script>
+</body>
+</html>

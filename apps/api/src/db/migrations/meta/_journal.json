@@ -15,6 +15,13 @@
       "when": 1773760579855,
       "tag": "0001_young_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773851622815,
+      "tag": "0002_tricky_lady_deathstrike",
+      "breakpoints": true
     }
   ]
 }

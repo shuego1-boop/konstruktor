@@ -9,8 +9,6 @@ pub fn run() {
             commands::pack::export_pack,
             commands::pack::import_pack,
             commands::pack::get_pack_manifest,
-            commands::server::start_local_server,
-            commands::server::stop_local_server,
             commands::quizzes::list_quizzes,
             commands::quizzes::create_quiz,
             commands::quizzes::get_quiz,
@@ -20,6 +18,7 @@ pub fn run() {
             commands::ai::get_background,
             commands::ai::upload_background,
             commands::ai::generate_quiz_questions,
+            commands::ai::read_image_as_data_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

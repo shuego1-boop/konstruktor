@@ -1,7 +1,10 @@
 {
   "name": "konstruktor",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -15,10 +18,11 @@
     "db:studio": "turbo run db:studio --filter=api"
   },
   "devDependencies": {
-    "turbo": "^2.3.3",
-    "typescript": "^5.7.2",
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^22.10.5",
     "prettier": "^3.4.2",
-    "@types/node": "^22.10.5"
+    "turbo": "^2.8.20",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=20.0.0",

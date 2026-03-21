@@ -210,3 +210,27 @@ Rules:
 
     Ok(content)
 }
+
+/// Read a local image file and return it as a base64 data URL.
+/// Used by the hotspot image picker to embed images into quiz JSON.
+#[tauri::command]
+pub fn read_image_as_data_url(path: String) -> Result<String, String> {
+    let p = std::path::Path::new(&path);
+    if !p.exists() {
+        return Err("Файл не найден".to_string());
+    }
+    let bytes = std::fs::read(p).map_err(|e| format!("Ошибка чтения: {e}"))?;
+    let ext = p
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("png")
+        .to_lowercase();
+    let mime = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        "gif" => "image/gif",
+        _ => "image/png",
+    };
+    let b64 = STANDARD.encode(&bytes);
+    Ok(format!("data:{mime};base64,{b64}"))
+}

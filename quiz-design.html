@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaaS Квизы — Редактор</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Nunito', 'sans-serif'] },
+                    colors: {
+                        primary: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 500: '#8b5cf6', 600: '#7c3aed', 900: '#4c1d95' },
+                        emerald: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669' }
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.03), 0 0 3px rgba(0,0,0,0.02)',
+                        'floating': '0 10px 40px -10px rgba(139, 92, 246, 0.15)',
+                        'input': '0 2px 10px rgba(0,0,0,0.01) inset'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #FAFAFA; }
+        
+        /* Стили инпутов */
+        .premium-input {
+            background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 16px;
+            transition: all 0.2s ease; box-shadow: 0 2px 10px rgba(0,0,0,0.01) inset;
+        }
+        .premium-input:focus-within { border-color: #C4B5FD; box-shadow: 0 0 0 4px #F5F3FF; }
+
+        /* Магическая кнопка ИИ */
+        .btn-magic {
+            background: linear-gradient(135deg, #F3E8FF 0%, #FFE4E6 100%);
+            color: #7C3AED; border: 1px solid #E9D5FF; transition: all 0.3s ease;
+        }
+        .btn-magic:hover { transform: translateY(-1px); box-shadow: 0 4px 15px -3px rgba(192, 132, 252, 0.3); }
+
+        /* Кастомный чекбокс для ответов */
+        .answer-card { transition: all 0.2s; border: 2px solid transparent; }
+        .answer-card.is-correct { border-color: #10B981; background-color: #ECFDF5; }
+        .answer-card:hover:not(.is-correct) { border-color: #E2E8F0; }
+
+        /* Скроллбары */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+        /* Выпадающее меню типов вопросов */
+        #types-dropdown { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); transform-origin: top center; }
+        .show-dropdown { opacity: 1 !important; transform: scaleY(1) translateY(0) !important; pointer-events: auto !important; }
+    </style>
+</head>
+<body class="text-slate-800 h-screen overflow-hidden flex flex-col antialiased selection:bg-primary-100 selection:text-primary-900">
+
+    <!-- ВЕРХНЯЯ ПАНЕЛЬ -->
+    <header class="h-[64px] px-6 flex items-center justify-between z-30 bg-white border-b border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex-shrink-0">
+        <!-- Навигация -->
+        <div class="flex items-center gap-4">
+            <button class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
+                <i class="ph-bold ph-arrow-left text-xl"></i>
+            </button>
+            <div class="flex items-center gap-2 text-[15px] font-bold">
+                <span class="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors">Мои квизы</span>
+                <i class="ph-bold ph-caret-right text-slate-300 text-xs"></i>
+                <span class="text-slate-800 bg-slate-100 px-3 py-1 rounded-lg">Клеточное строение 🌿</span>
+            </div>
+            <div class="ml-2 flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-slate-50 border border-slate-100 px-2.5 py-1 rounded-lg">
+                <div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div> Черновик
+            </div>
+        </div>
+        
+        <!-- Действия -->
+        <div class="flex items-center gap-3">
+            <span class="text-xs font-semibold text-slate-400 mr-2 flex items-center gap-1">
+                <i class="ph-bold ph-cloud-check text-emerald-500"></i> Сохранено
+            </span>
+            <button class="px-5 py-2.5 rounded-[12px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[14px] transition-colors flex items-center gap-2">
+                <i class="ph-fill ph-play text-slate-500"></i> Превью
+            </button>
+            <button class="px-5 py-2.5 rounded-[12px] bg-primary-600 hover:bg-primary-500 text-white font-bold text-[14px] transition-transform active:scale-95 shadow-md flex items-center gap-2">
+                <i class="ph-bold ph-paper-plane-tilt"></i> Опубликовать
+            </button>
+        </div>
+    </header>
+
+    <!-- РАБОЧАЯ ОБЛАСТЬ (3 Колонки) -->
+    <main class="flex-1 flex overflow-hidden bg-[#FAFAFA]">
+        
+        <!-- ЛЕВАЯ КОЛОНКА: Список вопросов -->
+        <aside class="w-[280px] bg-white/60 backdrop-blur-md border-r border-slate-200 flex flex-col flex-shrink-0 z-20">
+            <div class="p-4 flex items-center justify-between border-b border-slate-100">
+                <h3 class="font-extrabold text-slate-800 text-[15px]">Вопросы (4)</h3>
+                <button class="text-slate-400 hover:text-primary-600 transition-colors"><i class="ph-bold ph-arrows-down-up"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-3 space-y-2">
+                <!-- Активный вопрос -->
+                <div class="flex items-center gap-2 p-2.5 rounded-2xl bg-primary-50 border border-primary-200 cursor-pointer group shadow-sm">
+                    <i class="ph-bold ph-dots-six-vertical text-slate-300 cursor-grab hover:text-slate-500"></i>
+                    <div class="w-7 h-7 rounded-lg bg-white text-primary-600 font-bold text-xs flex items-center justify-center flex-shrink-0 shadow-sm border border-primary-100">1</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[13px] font-bold text-primary-900 truncate">Что такое цитоплазма?</p>
+                        <p class="text-[11px] font-semibold text-primary-500 flex items-center gap-1"><i class="ph-bold ph-radio-button"></i> Один ответ</p>
+                    </div>
+                </div>
+
+                <!-- Неактивный вопрос -->
+                <div class="flex items-center gap-2 p-2.5 rounded-2xl border border-transparent hover:bg-slate-100 cursor-pointer group transition-colors">
+                    <i class="ph-bold ph-dots-six-vertical text-slate-300 cursor-grab hover:text-slate-500 opacity-0 group-hover:opacity-100"></i>
+                    <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 font-bold text-xs flex items-center justify-center flex-shrink-0 group-hover:bg-white border border-transparent group-hover:border-slate-200">2</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[13px] font-bold text-slate-700 truncate">Выберите органоиды...</p>
+                        <p class="text-[11px] font-semibold text-slate-400 flex items-center gap-1"><i class="ph-bold ph-check-square-offset"></i> Несколько ответов</p>
+                    </div>
+                </div>
+
+                <!-- Неактивный вопрос -->
+                <div class="flex items-center gap-2 p-2.5 rounded-2xl border border-transparent hover:bg-slate-100 cursor-pointer group transition-colors">
+                    <i class="ph-bold ph-dots-six-vertical text-slate-300 cursor-grab hover:text-slate-500 opacity-0 group-hover:opacity-100"></i>
+                    <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 font-bold text-xs flex items-center justify-center flex-shrink-0 group-hover:bg-white border border-transparent group-hover:border-slate-200">3</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[13px] font-bold text-slate-700 truncate">Ядро есть у прокариот?</p>
+                        <p class="text-[11px] font-semibold text-slate-400 flex items-center gap-1"><i class="ph-bold ph-thumbs-up-down"></i> Да / Нет</p>
+                    </div>
+                </div>
+
+                <!-- Неактивный вопрос -->
+                <div class="flex items-center gap-2 p-2.5 rounded-2xl border border-transparent hover:bg-slate-100 cursor-pointer group transition-colors">
+                    <i class="ph-bold ph-dots-six-vertical text-slate-300 cursor-grab hover:text-slate-500 opacity-0 group-hover:opacity-100"></i>
+                    <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-500 font-bold text-xs flex items-center justify-center flex-shrink-0 group-hover:bg-white border border-transparent group-hover:border-slate-200">4</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-[13px] font-bold text-slate-700 truncate">Сопоставьте ученых...</p>
+                        <p class="text-[11px] font-semibold text-slate-400 flex items-center gap-1"><i class="ph-bold ph-arrows-left-right"></i> Соответствие</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Кнопка добавления с выпадающим меню -->
+            <div class="p-4 border-t border-slate-100 bg-white relative">
+                <button onclick="toggleTypes()" class="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 text-slate-600 font-bold text-[14px] hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50 transition-all">
+                    <i class="ph-bold ph-plus text-lg"></i> Добавить вопрос
+                </button>
+
+                <!-- Дропдаун типов (Скрыт по умолчанию) -->
+                <div id="types-dropdown" class="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-2xl shadow-floating border border-slate-100 p-

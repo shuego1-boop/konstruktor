@@ -17,6 +17,12 @@
       "id": "postgres-url",
       "description": "PostgreSQL connection string (e.g. postgresql://user:pass@localhost:5432/konstruktor)",
       "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "github-token",
+      "description": "GitHub Personal Access Token (github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens). Нужны права: repo (read+write), metadata (read).",
+      "password": true
     }
   ],
   "servers": {
@@ -31,7 +37,7 @@
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": ["@playwright/mcp@latest", "--stdio"]
+      "args": ["-y", "@playwright/mcp@latest", "--stdio"]
     },
     "magic": {
       "type": "stdio",
@@ -60,8 +66,16 @@
     },
     "context7": {
       "type": "stdio",
+      "command": "bunx",
+      "args": ["@upstash/context7-mcp@latest"]
+    },
+    "github": {
+      "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"]
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github-token}"
+      }
     }
   }
 }
