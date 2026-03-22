@@ -1,23 +1,45 @@
-import * as React from 'react'
-import { cn } from '../lib/cn.ts'
+import * as React from "react";
+import { motion } from "framer-motion";
+import { cn } from "../lib/cn.ts";
+import { springSmooth } from "../animations/transitions.ts";
 
 type CardProps = React.HTMLAttributes<HTMLDivElement> & {
-  header?: React.ReactNode
-  footer?: React.ReactNode
-  elevation?: 'flat' | 'raised' | 'floating'
-}
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
+  elevation?: "flat" | "raised" | "floating";
+  /** Disable hover lift animation */
+  static?: boolean;
+};
 
 const elevationClasses = {
-  flat: 'border border-gray-200',
-  raised: 'shadow-md border border-gray-100',
-  floating: 'shadow-xl border border-gray-50',
-}
+  flat: "border border-gray-200",
+  raised: "shadow-md border border-gray-100",
+  floating: "shadow-xl border border-gray-50",
+};
 
-export function Card({ header, footer, elevation = 'raised', className, children, ...props }: CardProps) {
+export function Card({
+  header,
+  footer,
+  elevation = "raised",
+  className,
+  children,
+  static: isStatic,
+  ...props
+}: CardProps) {
   return (
-    <div
+    <motion.div
+      whileHover={
+        isStatic
+          ? undefined
+          : { y: -2, boxShadow: "0 8px 30px rgba(0,0,0,0.12)" }
+      }
+      transition={springSmooth}
       {...props}
-      className={cn('rounded-xl bg-white overflow-hidden', elevationClasses[elevation], className)}
+      className={cn(
+        "rounded-xl bg-white overflow-hidden",
+        elevationClasses[elevation],
+        className,
+      )}
     >
       {header && (
         <div className="px-6 py-4 border-b border-gray-100 font-semibold text-gray-900">
@@ -30,6 +52,6 @@ export function Card({ header, footer, elevation = 'raised', className, children
           {footer}
         </div>
       )}
-    </div>
-  )
+    </motion.div>
+  );
 }

@@ -31,7 +31,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["Nunito", "Inter", "system-ui", "sans-serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "Fira Code", "monospace"],
       },
       boxShadow: {

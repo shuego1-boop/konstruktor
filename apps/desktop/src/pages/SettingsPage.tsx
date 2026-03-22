@@ -95,7 +95,7 @@ export function SettingsPage() {
                   {/* URL API */}
                   <div>
                     <label className="block text-[14px] font-extrabold text-slate-700 mb-2">
-                      URL API
+                      Адрес сервера
                     </label>
                     <div className="flex items-center bg-slate-50 border border-slate-200 rounded-2xl pr-4 focus-within:bg-white focus-within:border-primary-300 focus-within:ring-4 focus-within:ring-primary-50 transition-all">
                       <Link
@@ -107,16 +107,16 @@ export function SettingsPage() {
                         type="url"
                         value={apiUrl}
                         onChange={(e) => setApiUrl(e.target.value)}
-                        placeholder="https://api.yourdomain.com"
+                        placeholder="https://school.kvizok.app"
                         className="w-full bg-transparent text-slate-800 placeholder:text-slate-400 text-[15px] font-semibold px-3 py-3 outline-none"
                       />
                     </div>
                   </div>
 
-                  {/* Bearer токен */}
+                  {/* Ключ подключения */}
                   <div>
                     <label className="block text-[14px] font-extrabold text-slate-700 mb-2">
-                      Bearer-токен
+                      Ключ подключения
                     </label>
                     <div className="flex items-center bg-slate-50 border border-slate-200 rounded-2xl pr-2 focus-within:bg-white focus-within:border-primary-300 focus-within:ring-4 focus-within:ring-primary-50 transition-all">
                       <Key
@@ -128,7 +128,7 @@ export function SettingsPage() {
                         type={showToken ? "text" : "password"}
                         value={apiToken}
                         onChange={(e) => setApiToken(e.target.value)}
-                        placeholder="eyJ..."
+                        placeholder="Введите ключ, полученный от школы"
                         className="w-full bg-transparent text-slate-800 placeholder:text-slate-400 text-[15px] font-semibold px-3 py-3 outline-none tracking-wider"
                       />
                       <button
@@ -180,7 +180,7 @@ export function SettingsPage() {
                 <form onSubmit={handleSaveAi} className="space-y-5">
                   <div>
                     <label className="block text-[14px] font-extrabold text-slate-700 mb-2">
-                      API-ключ
+                      Ключ ИИ-помощника
                     </label>
                     <div className="flex items-center bg-slate-50 border border-slate-200 rounded-2xl pr-2 focus-within:bg-white focus-within:border-primary-300 focus-within:ring-4 focus-within:ring-primary-50 transition-all">
                       <LockKey

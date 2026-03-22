@@ -1,14 +1,17 @@
-﻿import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Quiz, QuizSession } from "@konstruktor/shared";
 import {
-  ScoreDisplay,
   StreakBadge,
   Badge,
   Button,
   AnswerFeedback,
+  AnimatedCounter,
+  LottieIcon,
+  staggerContainer,
+  staggerItemFade,
 } from "@konstruktor/ui";
 import { playFinishWin, playFinishLose } from "../services/sound.ts";
 import { AVATARS } from "./SetupPage.tsx";
@@ -16,6 +19,14 @@ import {
   processAchievements,
   type Achievement,
 } from "../services/achievements.ts";
+
+const API_BASE = import.meta.env["VITE_API_URL"] ?? "http://localhost:3000";
+
+type LeaderEntry = {
+  playerName: string;
+  score: number;
+  earnedPoints: number;
+};
 
 type LocationState = {
   session: QuizSession;
@@ -192,27 +203,17 @@ export function ResultsPage() {
   const quiz = state?.quiz;
 
   const [displayPct, setDisplayPct] = useState(0);
-  const animRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
   const [newAchievements, setNewAchievements] = useState<Achievement[]>([]);
   const [shownAchievements, setShownAchievements] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<LeaderEntry[]>([]);
+  const [leaderExpanded, setLeaderExpanded] = useState(false);
 
   useEffect(() => {
     if (!session) return;
-    const target = session.score;
-    const start = performance.now();
-    const duration = 1200;
-    function tick(now: number) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      // ease-out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplayPct(Math.round(eased * target));
-      if (progress < 1) animRef.current = requestAnimationFrame(tick);
-    }
-    animRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-    };
+    // Trigger AnimatedCounter by setting the target value
+    // Small delay so the component mounts first
+    const timer = setTimeout(() => setDisplayPct(session.score), 100);
+    return () => clearTimeout(timer);
   }, [session]);
 
   useEffect(() => {
@@ -252,6 +253,32 @@ export function ResultsPage() {
       }
     }, 1600);
     return () => clearTimeout(timer);
+  }, [session]);
+
+  // Fetch leaderboard (best-effort, fire-and-forget)
+  useEffect(() => {
+    if (!session) return;
+    (async () => {
+      try {
+        const { value: deviceId } = await import("@capacitor/preferences").then(
+          (m) => m.Preferences.get({ key: "deviceId" }),
+        );
+        const { value: deviceToken } =
+          await import("@capacitor/preferences").then((m) =>
+            m.Preferences.get({ key: "deviceToken" }),
+          );
+        if (!deviceId || !deviceToken) return;
+        const res = await fetch(
+          `${API_BASE}/quizzes/${session.quizId}/leaderboard`,
+          { headers: { Authorization: `Bearer ${deviceId}:${deviceToken}` } },
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as LeaderEntry[];
+        setLeaderboard(data);
+      } catch {
+        // offline or endpoint missing — silent
+      }
+    })();
   }, [session]);
 
   if (!session || !quiz) {
@@ -323,14 +350,23 @@ export function ResultsPage() {
       </header>
 
       <main className="flex-1 flex flex-col items-center px-6 py-8 max-w-lg mx-auto w-full">
-        <div className="mb-6">
-          <ScoreDisplay
-            points={session.earnedPoints}
-            maxPoints={session.totalPoints}
-            percentage={displayPct}
-            size="lg"
-          />
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          className="mb-6 flex flex-col items-center"
+        >
+          {session.score >= 90 && (
+            <LottieIcon name="trophy" size={80} className="mb-2" />
+          )}
+          <div className="text-6xl font-black tabular-nums">
+            <AnimatedCounter value={displayPct} duration={1200} suffix="%" />
+          </div>
+          <p className="text-slate-400 text-sm mt-2">
+            <AnimatedCounter value={session.earnedPoints} duration={1000} /> /{" "}
+            {session.totalPoints} баллов
+          </p>
+        </motion.div>
 
         <div className="flex items-center gap-3 mb-8">
           <Badge
@@ -344,19 +380,76 @@ export function ResultsPage() {
           )}
         </div>
 
+        {/* Leaderboard */}
+        {leaderboard.length > 0 && (
+          <div className="w-full mb-8">
+            <button
+              onClick={() => setLeaderExpanded((v) => !v)}
+              className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-3 w-full"
+            >
+              <span>🏆 Рейтинг ({leaderboard.length})</span>
+              <span className="text-xs text-slate-500 ml-auto">
+                {leaderExpanded ? "Свернуть ▲" : "Показать ▼"}
+              </span>
+            </button>
+            {leaderExpanded && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="flex flex-col gap-1.5 overflow-hidden"
+              >
+                {leaderboard.map((entry, i) => {
+                  const isMe =
+                    entry.playerName === session.playerName &&
+                    entry.score === session.score;
+                  return (
+                    <div
+                      key={`${entry.playerName}-${i}`}
+                      className={`flex items-center gap-3 rounded-xl px-4 py-2.5 ${
+                        isMe
+                          ? "bg-indigo-900/60 border border-indigo-500/40"
+                          : "bg-slate-800 border border-slate-700"
+                      }`}
+                    >
+                      <span className="text-slate-500 text-sm w-5 text-right font-mono">
+                        {i <= 2 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}
+                      </span>
+                      <span
+                        className={`text-sm flex-1 truncate ${isMe ? "text-indigo-200 font-bold" : "text-white"}`}
+                      >
+                        {entry.playerName}
+                        {isMe && " (вы)"}
+                      </span>
+                      <span className="text-slate-400 text-xs font-mono">
+                        {entry.score}% · {entry.earnedPoints} бал.
+                      </span>
+                    </div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </div>
+        )}
+
         {session.answers.length > 0 && (
           <div className="w-full mb-8">
             <h2 className="text-sm font-semibold text-slate-300 mb-3">
               Ответы по вопросам
             </h2>
-            <div className="flex flex-col gap-2">
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="flex flex-col gap-2"
+            >
               {session.answers.map((answer, i) => {
                 const question = quiz.questions.find(
                   (q) => q.id === answer.questionId,
                 );
                 return (
-                  <div
+                  <motion.div
                     key={answer.questionId}
+                    variants={staggerItemFade}
                     className="rounded-xl bg-slate-800 border border-slate-700 px-4 py-3"
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -383,10 +476,10 @@ export function ResultsPage() {
                         className="mt-2 text-sm"
                       />
                     )}
-                  </div>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           </div>
         )}
 

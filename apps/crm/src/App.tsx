@@ -6,6 +6,8 @@ import { LoginPage } from "./pages/LoginPage.tsx";
 import { DashboardPage } from "./pages/DashboardPage.tsx";
 import { QuizResultsPage } from "./pages/QuizResultsPage.tsx";
 import { SessionDetailPage } from "./pages/SessionDetailPage.tsx";
+import { StudentsPage } from "./pages/StudentsPage.tsx";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,6 +21,7 @@ export function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route element={<AuthGuard />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -31,6 +34,7 @@ export function App() {
                 path="/session/:sessionId"
                 element={<SessionDetailPage />}
               />
+              <Route path="/students" element={<StudentsPage />} />
             </Route>
           </Route>
         </Routes>

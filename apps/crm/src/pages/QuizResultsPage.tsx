@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "react-router";
+import { Skeleton } from "@konstruktor/ui";
 import {
   useReactTable,
   getCoreRowModel,
@@ -7,6 +9,17 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from "recharts";
 
 type SessionRow = {
   id: string;
@@ -216,6 +229,56 @@ export function QuizResultsPage() {
     getSortedRowModel: getSortedRowModel(),
   });
 
+  // Score distribution histogram: 0-20, 20-40, 40-60, 60-80, 80-100
+  const scoreDistribution = useMemo(() => {
+    if (!data?.sessions.length) return [];
+    const buckets = [
+      { range: "0–20%", count: 0 },
+      { range: "20–40%", count: 0 },
+      { range: "40–60%", count: 0 },
+      { range: "60–80%", count: 0 },
+      { range: "80–100%", count: 0 },
+    ];
+    for (const s of data.sessions) {
+      const idx = Math.min(Math.floor(s.score / 20), 4);
+      const bucket = buckets[idx];
+      if (bucket) bucket.count++;
+    }
+    return buckets;
+  }, [data?.sessions]);
+
+  // Sessions over time (by day, last 14 days)
+  const sessionsOverTime = useMemo(() => {
+    if (!data?.sessions.length) return [];
+    const days = new Map<
+      string,
+      { date: string; count: number; avgScore: number; total: number }
+    >();
+    for (const s of data.sessions) {
+      const day = new Date(s.startedAt).toLocaleDateString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+      });
+      const existing = days.get(day);
+      if (existing) {
+        existing.count++;
+        existing.total += s.score;
+        existing.avgScore = Math.round(existing.total / existing.count);
+      } else {
+        days.set(day, {
+          date: day,
+          count: 1,
+          avgScore: s.score,
+          total: s.score,
+        });
+      }
+    }
+    return Array.from(days.values())
+      .map(({ date, count, avgScore }) => ({ date, count, avgScore }))
+      .reverse()
+      .slice(-14);
+  }, [data?.sessions]);
+
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white px-8 py-4 flex items-center gap-4">
@@ -231,7 +294,25 @@ export function QuizResultsPage() {
       </header>
 
       <main className="p-8 space-y-8">
-        {isLoading && <p className="text-slate-400">Загрузка…</p>}
+        {isLoading && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-3 gap-6">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-3"
+                >
+                  <Skeleton className="h-8 w-20" />
+                  <Skeleton variant="text" className="w-24" />
+                </div>
+              ))}
+            </div>
+            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 space-y-3">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton variant="text" count={5} />
+            </div>
+          </div>
+        )}
         {isError && <p className="text-red-500">Ошибка загрузки данных</p>}
 
         {data && (
@@ -290,6 +371,101 @@ export function QuizResultsPage() {
                 ) : null;
               })()}
 
+            {/* Charts row */}
+            {data.totalSessions >= 2 && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Score distribution histogram */}
+                <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 p-6">
+                  <h2 className="text-sm font-semibold text-slate-700 mb-4">
+                    📊 Распределение баллов
+                  </h2>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <BarChart data={scoreDistribution} barCategoryGap="20%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis
+                        dataKey="range"
+                        tick={{ fontSize: 12 }}
+                        stroke="#94a3b8"
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fontSize: 12 }}
+                        stroke="#94a3b8"
+                      />
+                      <Tooltip
+                        formatter={(value) => [`${value} чел.`, "Кол-во"]}
+                        contentStyle={{
+                          borderRadius: 12,
+                          border: "1px solid #e2e8f0",
+                        }}
+                      />
+                      <Bar
+                        dataKey="count"
+                        fill="#6366f1"
+                        radius={[6, 6, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Sessions over time line chart */}
+                {sessionsOverTime.length >= 2 && (
+                  <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 p-6">
+                    <h2 className="text-sm font-semibold text-slate-700 mb-4">
+                      📈 Динамика по дням
+                    </h2>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={sessionsOverTime}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 12 }}
+                          stroke="#94a3b8"
+                        />
+                        <YAxis
+                          yAxisId="left"
+                          allowDecimals={false}
+                          tick={{ fontSize: 12 }}
+                          stroke="#94a3b8"
+                        />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          domain={[0, 100]}
+                          tick={{ fontSize: 12 }}
+                          stroke="#94a3b8"
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            borderRadius: 12,
+                            border: "1px solid #e2e8f0",
+                          }}
+                        />
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="count"
+                          stroke="#6366f1"
+                          strokeWidth={2}
+                          name="Попыток"
+                          dot={{ fill: "#6366f1", r: 3 }}
+                        />
+                        <Line
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="avgScore"
+                          stroke="#10b981"
+                          strokeWidth={2}
+                          name="Ср. балл %"
+                          dot={{ fill: "#10b981", r: 3 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Per-question accuracy bars */}
             {data.questionStats && data.questionStats.length > 0 && (
               <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 p-6">
@@ -342,6 +518,43 @@ export function QuizResultsPage() {
 
             {/* Sessions table */}
             <div className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
+                <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Попытки ({data.sessions.length})
+                </h2>
+                {data.sessions.length > 0 && (
+                  <button
+                    onClick={() => {
+                      const header = "Ученик;Балл%;Статус;Дата\n";
+                      const rows = data.sessions.map((s) =>
+                        [
+                          s.playerName,
+                          s.score,
+                          s.isPassed === null
+                            ? "—"
+                            : s.isPassed
+                              ? "Сдал"
+                              : "Не сдал",
+                          new Date(s.startedAt).toLocaleDateString("ru-RU"),
+                        ].join(";"),
+                      );
+                      const csv = header + rows.join("\n");
+                      const blob = new Blob(["\uFEFF" + csv], {
+                        type: "text/csv;charset=utf-8;",
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${data.quizTitle.replace(/[^a-zA-Zа-яА-Я0-9]/g, "_")}_results.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                  >
+                    📥 Скачать CSV
+                  </button>
+                )}
+              </div>
               <table className="w-full text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50">
                   {table.getHeaderGroups().map((hg) => (

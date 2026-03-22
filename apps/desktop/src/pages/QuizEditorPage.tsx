@@ -63,14 +63,14 @@ import Joyride, {
 } from "react-joyride";
 
 const QUESTION_TYPE_ICONS: Record<QuestionType, React.ReactNode> = {
-  single_choice:   <RadioButton size={12} weight="bold" />,
+  single_choice: <RadioButton size={12} weight="bold" />,
   multiple_choice: <CheckSquareOffset size={12} weight="bold" />,
-  true_false:      <ToggleLeft size={12} weight="bold" />,
-  text_input:      <TextT size={12} weight="bold" />,
-  fill_blank:      <TextAlignLeft size={12} weight="bold" />,
-  matching:        <ArrowsLeftRight size={12} weight="bold" />,
-  ordering:        <SortAscending size={12} weight="bold" />,
-  hotspot:         <Crosshair size={12} weight="bold" />,
+  true_false: <ToggleLeft size={12} weight="bold" />,
+  text_input: <TextT size={12} weight="bold" />,
+  fill_blank: <TextAlignLeft size={12} weight="bold" />,
+  matching: <ArrowsLeftRight size={12} weight="bold" />,
+  ordering: <SortAscending size={12} weight="bold" />,
+  hotspot: <Crosshair size={12} weight="bold" />,
 };
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
@@ -794,7 +794,10 @@ function SortableQuestionItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.35 : 1,
+    scale: isDragging ? 1.04 : 1,
+    zIndex: isDragging ? 50 : ("auto" as const),
+    boxShadow: isDragging ? "0 8px 24px rgba(139,92,246,0.18)" : undefined,
   };
 
   return (
@@ -805,7 +808,7 @@ function SortableQuestionItem({
       initial={{ opacity: 0, scale: 0.95, y: -8 }}
       animate={{ opacity: 1, scale: 1, y: 0, transition: { duration: 0.2 } }}
       exit={{ opacity: 0, scale: 0.95, y: -8, transition: { duration: 0.15 } }}
-      className={`flex items-center gap-2 rounded-2xl border p-3 cursor-pointer transition-all ${
+      className={`flex items-center gap-2 rounded-2xl border p-3 cursor-pointer transition-all ${isDragging ? "ring-2 ring-primary-300 border-primary-300 bg-primary-50/80" : ""} ${
         isActive
           ? "bg-primary-50 border-primary-200 shadow-[0_2px_12px_rgba(139,92,246,0.12)]"
           : "bg-white border-slate-100 hover:border-primary-200 hover:bg-primary-50/40 shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
@@ -816,21 +819,25 @@ function SortableQuestionItem({
       <span
         {...attributes}
         {...listeners}
-        className="cursor-grab text-slate-300 hover:text-slate-500 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+        className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-primary-500 p-1.5 rounded-lg hover:bg-primary-50 transition-colors"
         onClick={(e) => e.stopPropagation()}
       >
         <DotsNine size={16} weight="bold" />
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 mb-0.5">
-          <span className={`text-[10px] font-bold ${isActive ? "text-primary-500" : "text-slate-400"}`}>
+          <span
+            className={`text-[10px] font-bold ${isActive ? "text-primary-500" : "text-slate-400"}`}
+          >
             {QUESTION_TYPE_ICONS[question.type]}
           </span>
           <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
             {index + 1}
           </span>
         </div>
-        <p className={`text-[13px] font-semibold truncate ${isActive ? "text-primary-800" : "text-slate-700"}`}>
+        <p
+          className={`text-[13px] font-semibold truncate ${isActive ? "text-primary-800" : "text-slate-700"}`}
+        >
           {question.text || "Без названия"}
         </p>
       </div>
@@ -978,6 +985,7 @@ export function QuizEditorPage() {
   const [isGeneratingBg, setIsGeneratingBg] = useState(false);
   const [bgModalError, setBgModalError] = useState<string | null>(null);
   const [bgModalSuccess, setBgModalSuccess] = useState(false);
+  const [bgCustomPrompt, setBgCustomPrompt] = useState("");
   const [editorBgDataUrl, setEditorBgDataUrl] = useState<string | null>(null);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiTopic, setAiTopic] = useState("");
@@ -994,6 +1002,7 @@ export function QuizEditorPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiDisclaimer, setAiDisclaimer] = useState(false);
 
   // Must be after all useState — flag is set once on first render if aiTopic is in URL
   const didInitAutoGenerate = useRef(false);
@@ -1025,7 +1034,6 @@ export function QuizEditorPage() {
       invoke("update_quiz", { id: quizId, data: updated }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["quiz", quizId] });
-      showToast("Сохранено", "success");
     },
     onError: (e: unknown) =>
       showToast(e instanceof Error ? e.message : "Ошибка сохранения", "error"),
@@ -1148,7 +1156,9 @@ export function QuizEditorPage() {
     }
     setIsGeneratingBg(true);
     try {
-      const prompt = buildBgPrompt(quiz?.subject, quiz?.title);
+      const prompt = bgCustomPrompt.trim()
+        ? bgCustomPrompt.trim()
+        : buildBgPrompt(quiz?.subject, quiz?.title);
       const path = await invoke<string>("generate_background", {
         quizId,
         prompt,
@@ -1204,6 +1214,7 @@ export function QuizEditorPage() {
       updateMutation.mutate({ questions });
       setActiveQuestionIndex(questions.length - 1);
       setAiModalOpen(false);
+      setAiDisclaimer(true);
     } catch (e: unknown) {
       setAiError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -1519,7 +1530,10 @@ export function QuizEditorPage() {
             <ArrowLeft size={20} weight="bold" />
           </button>
           <div className="flex items-center gap-2 text-[15px] font-bold">
-            <span className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" onClick={() => navigate("/dashboard")}>
+            <span
+              className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors"
+              onClick={() => navigate("/dashboard")}
+            >
               Мои квизы
             </span>
             <span className="text-slate-300 text-xs">›</span>
@@ -1528,15 +1542,23 @@ export function QuizEditorPage() {
             </span>
           </div>
           {quiz && (
-            <div className={`ml-2 flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border ${
-              (quiz as Quiz & { status?: string }).status === "published"
-                ? "text-emerald-600 bg-emerald-50 border-emerald-100"
-                : "text-slate-400 bg-slate-50 border-slate-100"
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${
-                (quiz as Quiz & { status?: string }).status === "published" ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
-              }`} />
-              {(quiz as Quiz & { status?: string }).status === "published" ? "Опубликован" : "Черновик"}
+            <div
+              className={`ml-2 flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                (quiz as Quiz & { status?: string }).status === "published"
+                  ? "text-emerald-600 bg-emerald-50 border-emerald-100"
+                  : "text-slate-400 bg-slate-50 border-slate-100"
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  (quiz as Quiz & { status?: string }).status === "published"
+                    ? "bg-emerald-500 animate-pulse"
+                    : "bg-slate-300"
+                }`}
+              />
+              {(quiz as Quiz & { status?: string }).status === "published"
+                ? "Опубликован"
+                : "Черновик"}
             </div>
           )}
         </div>
@@ -1554,351 +1576,388 @@ export function QuizEditorPage() {
             <Play size={14} weight="fill" className="text-slate-500" /> Превью
           </button>
           <button
-            className="px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-500 text-white font-bold text-[14px] transition-transform active:scale-95 shadow-md flex items-center gap-2"
+            className="px-5 py-2.5 rounded-xl hover:opacity-90 text-white font-bold text-[14px] transition-transform active:scale-95 shadow-md flex items-center gap-2"
+            style={{ backgroundColor: "#7c3aed" }}
             onClick={() => navigate(`/preview/${quizId}`)}
           >
             <PaperPlaneTilt size={14} weight="bold" /> Опубликовать
           </button>
         </div>
       </header>
-
       {/* ── Рабочая область (3 колонки) ─────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
-      {/* Left sidebar — question list */}
-      <aside className="w-70 bg-white/80 backdrop-blur-md border-r border-slate-200 flex flex-col shrink-0 z-20">
-        <div className="p-4 flex items-center justify-between border-b border-slate-100">
-          <h3 className="font-extrabold text-slate-800 text-[15px]">
-            Вопросы ({quiz?.questions.length ?? 0})
-          </h3>
-        </div>
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2" data-tour="editor-questions">
-          {quiz && (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={quiz.questions.map((q) => q.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <AnimatePresence initial={false}>
-                  {quiz.questions.map((q, i) => (
-                    <SortableQuestionItem
-                      key={q.id}
-                      question={q}
-                      index={i}
-                      isActive={i === activeQuestionIndex}
-                      onSelect={() => setActiveQuestionIndex(i)}
-                      onDelete={() => deleteQuestion(i)}
-                    />
-                  ))}
-                </AnimatePresence>
-              </SortableContext>
-            </DndContext>
-          )}
-        </div>
-        <div
-          className="p-4 border-t border-slate-100 bg-white relative"
-          data-tour="editor-add-question"
-        >
-          <details className="group">
-            <summary className="cursor-pointer w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 text-slate-600 font-bold text-[14px] hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50 transition-all list-none">
-              <Plus size={18} weight="bold" /> Добавить вопрос
-            </summary>
-            <div className="mt-2 flex flex-col gap-1">
-              {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[])
-                .filter((type) => type !== "fill_blank")
-                .map((type) => (
-                  <button
-                    key={type}
-                    data-demo-qtype={type}
-                    className="text-left text-xs px-3 py-2 rounded-xl hover:bg-primary-50 hover:text-primary-700 text-slate-700 flex items-center gap-2 font-semibold transition-colors"
-                    onClick={() => addQuestion(type)}
-                  >
-                    <span className="text-slate-400">{QUESTION_TYPE_ICONS[type]}</span>
-                    {QUESTION_TYPE_LABELS[type]}
-                  </button>
-                ))}
-            </div>
-          </details>
-        </div>
-        <div className="p-4 border-t border-slate-100">
-          <button
-            className="w-full text-sm font-bold text-primary-600 hover:bg-primary-50 rounded-xl py-2.5 px-3 transition-colors text-left flex items-center gap-2"
-            onClick={() => {
-              setAiTopic(quiz?.title ?? quiz?.subject ?? "");
-              setAiGradeLevel(quiz?.gradeLevel ?? "");
-              setAiModalOpen(true);
-            }}
+        {/* Left sidebar — question list */}
+        <aside className="w-70 bg-white/80 backdrop-blur-md border-r border-slate-200 flex flex-col shrink-0 z-20">
+          <div className="p-4 flex items-center justify-between border-b border-slate-100">
+            <h3 className="font-extrabold text-slate-800 text-[15px]">
+              Вопросы ({quiz?.questions.length ?? 0})
+            </h3>
+          </div>
+          <div
+            className="flex-1 overflow-y-auto p-3 flex flex-col gap-2"
+            data-tour="editor-questions"
           >
-            <MagicWand size={16} weight="duotone" className="text-primary-500" /> Создать с ИИ
-          </button>
-        </div>
-      </aside>
-
-      {/* Main area — question editor */}
-      <main className="flex-1 p-8 overflow-y-auto" data-tour="editor-main">
-        {!activeQuestion && (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400 py-24">
-            <p className="text-lg">Вопросов пока нет.</p>
-            <p className="text-sm mt-1">Добавьте вопрос из панели слева.</p>
-          </div>
-        )}
-        {activeQuestion && (
-          <div className="max-w-2xl mx-auto">
-            <div className="mb-6 flex items-center gap-3">
-              <Badge variant="info">
-                {QUESTION_TYPE_LABELS[activeQuestion.type]}
-              </Badge>
-              <span className="text-sm text-slate-400">
-                Q{activeQuestionIndex + 1}
-              </span>
-            </div>
-            <Input
-              label="Текст вопроса"
-              value={activeQuestion.text}
-              onChange={(e) => {
-                const questions = quiz!.questions.map((q, i) =>
-                  i === activeQuestionIndex
-                    ? { ...q, text: e.target.value }
-                    : q,
-                );
-                updateMutation.mutate({ questions });
-              }}
-              placeholder="Введите текст вопроса…"
-            />
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <Input
-                label="Баллы"
-                type="number"
-                value={String(activeQuestion.points)}
-                onChange={(e) => {
-                  const questions = quiz!.questions.map((q, i) =>
-                    i === activeQuestionIndex
-                      ? { ...q, points: Number(e.target.value) }
-                      : q,
-                  );
-                  updateMutation.mutate({ questions });
-                }}
-              />
-              <Input
-                label="Время (сек)"
-                type="number"
-                value={String(activeQuestion.timeLimit)}
-                onChange={(e) => {
-                  const questions = quiz!.questions.map((q, i) =>
-                    i === activeQuestionIndex
-                      ? { ...q, timeLimit: Number(e.target.value) }
-                      : q,
-                  );
-                  updateMutation.mutate({ questions });
-                }}
-              />
-            </div>
-            <AnswerEditor
-              question={activeQuestion}
-              onUpdate={(updated) => {
-                const questions = quiz!.questions.map((q, i) =>
-                  i === activeQuestionIndex
-                    ? ({
-                        ...q,
-                        ...updated,
-                      } as unknown as import("@konstruktor/shared").Question)
-                    : q,
-                );
-                updateMutation.mutate({ questions });
-              }}
-            />{" "}
-          </div>
-        )}
-      </main>
-
-      {/* Right sidebar — quiz settings */}
-      <aside
-        className="w-72 border-l border-slate-100 bg-white/80 backdrop-blur-md p-5 overflow-y-auto shrink-0"
-        data-tour="editor-settings"
-      >
-        <h2 className="text-[15px] font-extrabold text-slate-800 mb-4">
-          Настройки квиза
-        </h2>
-        {quiz && (
-          <div className="flex flex-col gap-4">
-            <Input
-              label="Название"
-              value={quiz.title}
-              onChange={(e) => updateMutation.mutate({ title: e.target.value })}
-            />
-            <Input
-              label="Описание"
-              value={quiz.description ?? ""}
-              onChange={(e) =>
-                updateMutation.mutate({ description: e.target.value })
-              }
-            />
-            <Input
-              label="Предмет"
-              value={quiz.subject ?? ""}
-              onChange={(e) =>
-                updateMutation.mutate({ subject: e.target.value })
-              }
-              placeholder="История, Математика…"
-            />
-            <Input
-              label="Класс"
-              value={quiz.gradeLevel ?? ""}
-              onChange={(e) =>
-                updateMutation.mutate({ gradeLevel: e.target.value })
-              }
-              placeholder="5, 7, 10…"
-            />
-            <Input
-              label="Время на вопрос (сек)"
-              type="number"
-              value={String(quiz.settings.timePerQuestion ?? 30)}
-              onChange={(e) =>
-                updateMutation.mutate({
-                  settings: {
-                    ...quiz.settings,
-                    timePerQuestion: Number(e.target.value),
-                  },
-                })
-              }
-            />
-            <Input
-              label="Проходной балл (%)"
-              type="number"
-              value={String(quiz.settings.passingScore ?? "")}
-              placeholder="Нет"
-              onChange={(e) =>
-                updateMutation.mutate({
-                  settings: {
-                    ...quiz.settings,
-                    passingScore: e.target.value
-                      ? Number(e.target.value)
-                      : (undefined as unknown as number),
-                  } as import("@konstruktor/shared").QuizSettings,
-                })
-              }
-            />
-            <div className="flex flex-col gap-2 pt-1">
-              {(
-                [
-                  ["shuffleQuestions", "Перемешивать вопросы"],
-                  ["shuffleAnswers", "Перемешивать ответы"],
-                  ["showCorrectAnswer", "Показывать правильный ответ"],
-                  ["streakMultiplier", "Множитель за серию"],
-                ] as [keyof typeof quiz.settings, string][]
-              ).map(([key, label]) => (
-                <label
-                  key={key}
-                  className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer"
+            {quiz && (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={quiz.questions.map((q) => q.id)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300"
-                    checked={!!quiz.settings[key]}
-                    onChange={(e) =>
-                      updateMutation.mutate({
-                        settings: { ...quiz.settings, [key]: e.target.checked },
-                      })
-                    }
-                  />
-                  {label}
-                </label>
-              ))}
-              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                <input
-                  id="lives-toggle"
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300"
-                  checked={quiz.settings.lives !== undefined}
+                  <AnimatePresence initial={false}>
+                    {quiz.questions.map((q, i) => (
+                      <SortableQuestionItem
+                        key={q.id}
+                        question={q}
+                        index={i}
+                        isActive={i === activeQuestionIndex}
+                        onSelect={() => setActiveQuestionIndex(i)}
+                        onDelete={() => deleteQuestion(i)}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </SortableContext>
+              </DndContext>
+            )}
+          </div>
+          <div
+            className="p-4 border-t border-slate-100 bg-white relative"
+            data-tour="editor-add-question"
+          >
+            <details className="group">
+              <summary className="cursor-pointer w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 text-slate-600 font-bold text-[14px] hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50 transition-all list-none">
+                <Plus size={18} weight="bold" /> Добавить вопрос
+              </summary>
+              <div className="mt-2 flex flex-col gap-1">
+                {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[])
+                  .filter((type) => type !== "fill_blank")
+                  .map((type) => (
+                    <button
+                      key={type}
+                      data-demo-qtype={type}
+                      className="text-left text-xs px-3 py-2 rounded-xl hover:bg-primary-50 hover:text-primary-700 text-slate-700 flex items-center gap-2 font-semibold transition-colors"
+                      onClick={() => addQuestion(type)}
+                    >
+                      <span className="text-slate-400">
+                        {QUESTION_TYPE_ICONS[type]}
+                      </span>
+                      {QUESTION_TYPE_LABELS[type]}
+                    </button>
+                  ))}
+              </div>
+            </details>
+          </div>
+          <div className="p-4 border-t border-slate-100">
+            <button
+              className="w-full text-sm font-bold text-primary-600 hover:bg-primary-50 rounded-xl py-2.5 px-3 transition-colors text-left flex items-center gap-2"
+              onClick={() => {
+                setAiTopic(quiz?.title ?? quiz?.subject ?? "");
+                setAiGradeLevel(quiz?.gradeLevel ?? "");
+                setAiModalOpen(true);
+              }}
+            >
+              <MagicWand
+                size={16}
+                weight="duotone"
+                className="text-primary-500"
+              />{" "}
+              Создать с ИИ
+            </button>
+          </div>
+        </aside>
+
+        {/* Main area — question editor */}
+        <main className="flex-1 p-8 overflow-y-auto" data-tour="editor-main">
+          {aiDisclaimer && (
+            <div className="mb-6 flex items-start gap-3 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-4 max-w-2xl mx-auto">
+              <span className="text-xl mt-0.5 shrink-0">⚠️</span>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-amber-800">
+                  AI‑помощник составил черновик
+                </p>
+                <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                  Проверьте вопросы и ответы перед использованием — AI может
+                  допускать фактические ошибки.
+                </p>
+              </div>
+              <button
+                onClick={() => setAiDisclaimer(false)}
+                className="text-amber-400 hover:text-amber-600 transition-colors shrink-0 mt-0.5"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+          {!activeQuestion && (
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 py-24">
+              <p className="text-lg">Вопросов пока нет.</p>
+              <p className="text-sm mt-1">Добавьте вопрос из панели слева.</p>
+            </div>
+          )}
+          {activeQuestion && (
+            <div className="max-w-2xl mx-auto">
+              <div className="mb-6 flex items-center gap-3">
+                <Badge variant="info">
+                  {QUESTION_TYPE_LABELS[activeQuestion.type]}
+                </Badge>
+                <span className="text-sm text-slate-400">
+                  Q{activeQuestionIndex + 1}
+                </span>
+              </div>
+              <Input
+                label="Текст вопроса"
+                value={activeQuestion.text}
+                onChange={(e) => {
+                  const questions = quiz!.questions.map((q, i) =>
+                    i === activeQuestionIndex
+                      ? { ...q, text: e.target.value }
+                      : q,
+                  );
+                  updateMutation.mutate({ questions });
+                }}
+                placeholder="Введите текст вопроса…"
+              />
+              <div className="mt-4 grid grid-cols-2 gap-4">
+                <Input
+                  label="Баллы"
+                  type="number"
+                  value={String(activeQuestion.points)}
                   onChange={(e) => {
-                    const { lives: _prev, ...rest } = quiz.settings;
-                    updateMutation.mutate({
-                      settings: e.target.checked ? { ...rest, lives: 3 } : rest,
-                    });
+                    const questions = quiz!.questions.map((q, i) =>
+                      i === activeQuestionIndex
+                        ? { ...q, points: Number(e.target.value) }
+                        : q,
+                    );
+                    updateMutation.mutate({ questions });
                   }}
                 />
-                Жизни
-              </label>
+                <Input
+                  label="Время (сек)"
+                  type="number"
+                  value={String(activeQuestion.timeLimit)}
+                  onChange={(e) => {
+                    const questions = quiz!.questions.map((q, i) =>
+                      i === activeQuestionIndex
+                        ? { ...q, timeLimit: Number(e.target.value) }
+                        : q,
+                    );
+                    updateMutation.mutate({ questions });
+                  }}
+                />
+              </div>
+              <AnswerEditor
+                question={activeQuestion}
+                onUpdate={(updated) => {
+                  const questions = quiz!.questions.map((q, i) =>
+                    i === activeQuestionIndex
+                      ? ({
+                          ...q,
+                          ...updated,
+                        } as unknown as import("@konstruktor/shared").Question)
+                      : q,
+                  );
+                  updateMutation.mutate({ questions });
+                }}
+              />{" "}
             </div>
-            {quiz.settings.lives !== undefined && (
+          )}
+        </main>
+
+        {/* Right sidebar — quiz settings */}
+        <aside
+          className="w-72 border-l border-slate-100 bg-white/80 backdrop-blur-md p-5 overflow-y-auto shrink-0"
+          data-tour="editor-settings"
+        >
+          <h2 className="text-[15px] font-extrabold text-slate-800 mb-4">
+            Настройки квиза
+          </h2>
+          {quiz && (
+            <div className="flex flex-col gap-4">
               <Input
-                label="Количество жизней"
+                label="Название"
+                value={quiz.title}
+                onChange={(e) =>
+                  updateMutation.mutate({ title: e.target.value })
+                }
+              />
+              <Input
+                label="Описание"
+                value={quiz.description ?? ""}
+                onChange={(e) =>
+                  updateMutation.mutate({ description: e.target.value })
+                }
+              />
+              <Input
+                label="Предмет"
+                value={quiz.subject ?? ""}
+                onChange={(e) =>
+                  updateMutation.mutate({ subject: e.target.value })
+                }
+                placeholder="История, Математика…"
+              />
+              <Input
+                label="Класс"
+                value={quiz.gradeLevel ?? ""}
+                onChange={(e) =>
+                  updateMutation.mutate({ gradeLevel: e.target.value })
+                }
+                placeholder="5, 7, 10…"
+              />
+              <Input
+                label="Время на вопрос (сек)"
                 type="number"
-                value={String(quiz.settings.lives)}
+                value={String(quiz.settings.timePerQuestion ?? 30)}
                 onChange={(e) =>
                   updateMutation.mutate({
                     settings: {
                       ...quiz.settings,
-                      lives: Number(e.target.value),
+                      timePerQuestion: Number(e.target.value),
                     },
                   })
                 }
               />
-            )}
-            <div
-              className="pt-4 border-t border-slate-100 flex flex-col gap-2"
-              data-tour="editor-settings-actions"
-            >
-              <Button
-                variant="secondary"
-                onClick={() => navigate(`/preview/${quizId}`)}
-              >
-                Превью квиза
-              </Button>
-            </div>
-            <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-700">
-                  🎨 Оформление
-                </p>
-                {(quiz as unknown as { backgroundUrl?: string })
-                  .backgroundUrl && (
-                  <button
-                    className="text-xs text-slate-400 hover:text-red-500 transition-colors"
-                    onClick={async () => {
-                      await invoke("update_quiz", {
-                        id: quizId,
-                        data: { backgroundUrl: null },
-                      });
-                      qc.invalidateQueries({ queryKey: ["quiz", quizId] });
-                    }}
+              <Input
+                label="Проходной балл (%)"
+                type="number"
+                value={String(quiz.settings.passingScore ?? "")}
+                placeholder="Нет"
+                onChange={(e) =>
+                  updateMutation.mutate({
+                    settings: {
+                      ...quiz.settings,
+                      passingScore: e.target.value
+                        ? Number(e.target.value)
+                        : (undefined as unknown as number),
+                    } as import("@konstruktor/shared").QuizSettings,
+                  })
+                }
+              />
+              <div className="flex flex-col gap-2 pt-1">
+                {(
+                  [
+                    ["shuffleQuestions", "Перемешивать вопросы"],
+                    ["shuffleAnswers", "Перемешивать ответы"],
+                    ["showCorrectAnswer", "Показывать правильный ответ"],
+                    ["streakMultiplier", "Множитель за серию"],
+                  ] as [keyof typeof quiz.settings, string][]
+                ).map(([key, label]) => (
+                  <label
+                    key={key}
+                    className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer"
                   >
-                    сбросить фон ×
-                  </button>
-                )}
-              </div>
-              <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-200 bg-linear-to-br from-indigo-400 to-violet-600">
-                {editorBgDataUrl ? (
-                  <img
-                    src={editorBgDataUrl}
-                    className="w-full h-full object-cover"
-                    alt="Фон квиза"
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-300"
+                      checked={!!quiz.settings[key]}
+                      onChange={(e) =>
+                        updateMutation.mutate({
+                          settings: {
+                            ...quiz.settings,
+                            [key]: e.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    {label}
+                  </label>
+                ))}
+                <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                  <input
+                    id="lives-toggle"
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-slate-300"
+                    checked={quiz.settings.lives !== undefined}
+                    onChange={(e) => {
+                      const { lives: _prev, ...rest } = quiz.settings;
+                      updateMutation.mutate({
+                        settings: e.target.checked
+                          ? { ...rest, lives: 3 }
+                          : rest,
+                      });
+                    }}
                   />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-white/50 text-xs tracking-wide">
-                    Нет фона
-                  </div>
-                )}
+                  Жизни
+                </label>
               </div>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setBgModalError(null);
-                  setBgModalSuccess(false);
-                  setBgModalOpen(true);
-                }}
+              {quiz.settings.lives !== undefined && (
+                <Input
+                  label="Количество жизней"
+                  type="number"
+                  value={String(quiz.settings.lives)}
+                  onChange={(e) =>
+                    updateMutation.mutate({
+                      settings: {
+                        ...quiz.settings,
+                        lives: Number(e.target.value),
+                      },
+                    })
+                  }
+                />
+              )}
+              <div
+                className="pt-4 border-t border-slate-100 flex flex-col gap-2"
+                data-tour="editor-settings-actions"
               >
-                🎨 Изменить фон
-              </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate(`/preview/${quizId}`)}
+                >
+                  Превью квиза
+                </Button>
+              </div>
+              <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-slate-700">
+                    🎨 Оформление
+                  </p>
+                  {(quiz as unknown as { backgroundUrl?: string })
+                    .backgroundUrl && (
+                    <button
+                      className="text-xs text-slate-400 hover:text-red-500 transition-colors"
+                      onClick={async () => {
+                        await invoke("update_quiz", {
+                          id: quizId,
+                          data: { backgroundUrl: null },
+                        });
+                        qc.invalidateQueries({ queryKey: ["quiz", quizId] });
+                      }}
+                    >
+                      сбросить фон ×
+                    </button>
+                  )}
+                </div>
+                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-200 bg-linear-to-br from-indigo-400 to-violet-600">
+                  {editorBgDataUrl ? (
+                    <img
+                      src={editorBgDataUrl}
+                      className="w-full h-full object-cover"
+                      alt="Фон квиза"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-white/50 text-xs tracking-wide">
+                      Нет фона
+                    </div>
+                  )}
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setBgModalError(null);
+                    setBgModalSuccess(false);
+                    setBgModalOpen(true);
+                  }}
+                >
+                  🎨 Изменить фон
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
         </aside>
-
-      </div> {/* конец рабочей области */}
+      </div>{" "}
+      {/* конец рабочей области */}
       {bgModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -2022,6 +2081,13 @@ export function QuizEditorPage() {
                       Модель gpt-image-1-mini · ~2.3 ₽
                     </span>
                   </p>
+                  <textarea
+                    value={bgCustomPrompt}
+                    onChange={(e) => setBgCustomPrompt(e.target.value)}
+                    placeholder="Опишите желаемый фон или оставьте пустым — ИИ подберёт по теме..."
+                    rows={3}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-50 resize-none"
+                  />
                   {!localStorage.getItem("konstruktor_ai_key") && (
                     <div className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
                       ⚠ AI ключ не задан. Добавьте его в Настройках приложения.
@@ -2042,7 +2108,6 @@ export function QuizEditorPage() {
           </div>
         </div>
       )}
-
       {/* ─── AI Generation Modal ─────────────────────────────────────────── */}
       {aiModalOpen && (
         <div

@@ -1,5 +1,8 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { Skeleton } from "@konstruktor/ui";
 
 type QuizSummary = {
   id: string;
@@ -63,6 +66,9 @@ function buildWeeklySparkline(quizzes: QuizSummary[]): number[] {
 }
 
 export function DashboardPage() {
+  const [animateRef] = useAutoAnimate();
+  const [search, setSearch] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState("");
   const { data: quizzes, isLoading } = useQuery<QuizSummary[]>({
     queryKey: ["quizzes"],
     queryFn: async () => {
@@ -85,9 +91,66 @@ export function DashboardPage() {
   const sparkline = quizzes ? buildWeeklySparkline(quizzes) : [];
   const thisWeekSessions = sparkline.slice(-7).reduce((a, b) => a + b, 0);
 
+  // Unique subjects for filter dropdown
+  const subjects = useMemo(() => {
+    if (!quizzes) return [];
+    const set = new Set(
+      quizzes.map((q) => q.subject).filter(Boolean) as string[],
+    );
+    return Array.from(set).sort();
+  }, [quizzes]);
+
+  // Filtered quizzes
+  const filteredQuizzes = useMemo(() => {
+    if (!quizzes) return [];
+    let result = quizzes;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((quiz) => quiz.title.toLowerCase().includes(q));
+    }
+    if (subjectFilter) {
+      result = result.filter((quiz) => quiz.subject === subjectFilter);
+    }
+    return result;
+  }, [quizzes, search, subjectFilter]);
+
   return (
     <main className="p-8 space-y-8">
-      {isLoading && <p className="text-slate-400">Загрузка…</p>}
+      {isLoading && (
+        <div className="space-y-8">
+          {/* Metric cards skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 space-y-3"
+              >
+                <Skeleton className="h-8 w-20" />
+                <Skeleton variant="text" className="w-32" />
+              </div>
+            ))}
+          </div>
+          {/* Quiz grid skeleton */}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden"
+              >
+                <Skeleton className="h-1.5 w-full rounded-none" />
+                <div className="p-5 space-y-3">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton variant="text" className="w-1/2" />
+                  <div className="flex gap-4 pt-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Summary metrics row ─────────────────────────────────────── */}
       {!isLoading && quizzes && quizzes.length > 0 && (
@@ -147,12 +210,94 @@ export function DashboardPage() {
       )}
 
       {!isLoading && quizzes?.length === 0 && (
-        <p className="text-slate-400">Нет квизов</p>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <img
+            src="/logo.svg"
+            alt="КвизОК"
+            className="h-20 w-20 mb-6 opacity-80"
+          />
+          <h3 className="text-xl font-bold text-slate-700 mb-2">
+            Добро пожаловать в КвизОК!
+          </h3>
+          <p className="text-sm text-slate-500 max-w-md mb-6 leading-relaxed">
+            Здесь будет аналитика по квизам и ученикам. Чтобы начать:
+          </p>
+          <div className="flex flex-col gap-3 text-left max-w-sm w-full">
+            <div className="flex items-start gap-3 bg-indigo-50 rounded-xl px-4 py-3">
+              <span className="text-lg mt-0.5">①</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-700">
+                  Создайте квиз
+                </p>
+                <p className="text-xs text-slate-500">
+                  В Desktop‑приложении КвизОК или с помощью AI
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 bg-violet-50 rounded-xl px-4 py-3">
+              <span className="text-lg mt-0.5">②</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-700">
+                  Раздайте ученикам
+                </p>
+                <p className="text-xs text-slate-500">
+                  Через код, QR или файл — даже без интернета
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 bg-purple-50 rounded-xl px-4 py-3">
+              <span className="text-lg mt-0.5">③</span>
+              <div>
+                <p className="text-sm font-semibold text-slate-700">
+                  Смотрите результаты
+                </p>
+                <p className="text-xs text-slate-500">
+                  Аналитика появится здесь автоматически
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Search / filter bar ─────────────────────────────────────── */}
+      {!isLoading && quizzes && quizzes.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="text"
+            placeholder="Поиск квизов…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 w-64"
+          />
+          {subjects.length > 0 && (
+            <select
+              value={subjectFilter}
+              onChange={(e) => setSubjectFilter(e.target.value)}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            >
+              <option value="">Все предметы</option>
+              {subjects.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          )}
+          {(search || subjectFilter) && (
+            <span className="text-xs text-slate-400">
+              {filteredQuizzes.length} из {quizzes.length}
+            </span>
+          )}
+        </div>
       )}
 
       {/* ── Quiz grid ────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {quizzes?.map((quiz) => {
+      <div
+        ref={animateRef}
+        className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      >
+        {filteredQuizzes.map((quiz) => {
           const passColor =
             quiz.averageScore >= 70
               ? "bg-emerald-500"

@@ -87,8 +87,14 @@ export function HomePage() {
   return (
     <div className="flex min-h-screen flex-col items-center bg-gradient-to-br from-indigo-600 to-purple-700 p-6">
       <div className="w-full max-w-lg">
-        <h1 className="text-4xl font-bold text-white text-center mb-2 mt-8">
-          Konstruktor
+        <img
+          src="/logo.svg"
+          alt="КвизОК"
+          className="mx-auto mt-8 mb-2 h-16 w-16 drop-shadow-lg"
+          draggable={false}
+        />
+        <h1 className="text-4xl font-bold text-white text-center mb-2">
+          Квиз<span className="text-indigo-300">ОК</span>
         </h1>
         <p className="text-indigo-200 text-center mb-8">
           Выберите квиз для начала

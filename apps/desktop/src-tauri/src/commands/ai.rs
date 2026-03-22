@@ -12,7 +12,10 @@ fn bg_dir(app: &AppHandle) -> PathBuf {
 
 #[derive(Deserialize)]
 struct ImageData {
-    url: String,
+    #[serde(default)]
+    url: Option<String>,
+    #[serde(default)]
+    b64_json: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -38,7 +41,6 @@ pub async fn generate_background(
         "prompt": prompt,
         "n": 1,
         "size": "1536x1024",
-        "response_format": "url",
         "quality": "medium"
     });
 
@@ -61,29 +63,37 @@ pub async fn generate_background(
         .await
         .map_err(|e| format!("Ошибка ответа API: {e}"))?;
 
-    let image_url = gen
+    let item = gen
         .data
         .into_iter()
         .next()
-        .map(|d| d.url)
         .ok_or_else(|| "Пустой ответ от API".to_string())?;
-
-    // Download the generated image
-    let img_resp = client
-        .get(&image_url)
-        .send()
-        .await
-        .map_err(|e| format!("Ошибка загрузки изображения: {e}"))?;
-
-    let bytes = img_resp
-        .bytes()
-        .await
-        .map_err(|e| format!("Ошибка чтения: {e}"))?;
 
     let dir = bg_dir(&app);
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let path = dir.join(format!("{quiz_id}.png"));
-    std::fs::write(&path, &bytes).map_err(|e| e.to_string())?;
+
+    if let Some(b64) = item.b64_json {
+        // Decode base64 image directly
+        let bytes = STANDARD
+            .decode(&b64)
+            .map_err(|e| format!("Ошибка декодирования base64: {e}"))?;
+        std::fs::write(&path, &bytes).map_err(|e| e.to_string())?;
+    } else if let Some(image_url) = item.url {
+        // Download the generated image by URL
+        let img_resp = client
+            .get(&image_url)
+            .send()
+            .await
+            .map_err(|e| format!("Ошибка загрузки изображения: {e}"))?;
+        let bytes = img_resp
+            .bytes()
+            .await
+            .map_err(|e| format!("Ошибка чтения: {e}"))?;
+        std::fs::write(&path, &bytes).map_err(|e| e.to_string())?;
+    } else {
+        return Err("API не вернул ни URL, ни base64 данные".to_string());
+    }
 
     Ok(path.to_string_lossy().to_string())
 }

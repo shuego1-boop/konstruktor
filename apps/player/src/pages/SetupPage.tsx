@@ -67,11 +67,14 @@ export function SetupPage({ onComplete }: Props) {
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
         className="mb-8 text-center"
       >
-        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 text-4xl shadow-lg backdrop-blur-sm">
-          K
-        </div>
+        <img
+          src="/logo.svg"
+          alt="КвизОК"
+          className="mx-auto mb-3 h-20 w-20 drop-shadow-lg"
+          draggable={false}
+        />
         <h1 className="text-3xl font-extrabold tracking-tight text-white">
-          Konstruktor
+          Квиз<span className="text-indigo-300">ОК</span>
         </h1>
         <p className="mt-1 text-indigo-200 text-sm">
           Умные квизы для умных учеников

@@ -287,7 +287,7 @@ describe("QuizEditorPage data-tour selectors", () => {
     );
   });
 
-  it('renders data-demo-question on question items', async () => {
+  it("renders data-demo-question on question items", async () => {
     render(
       <Wrapper initialRoute="/editor/quiz-1">
         <Routes>
@@ -305,7 +305,7 @@ describe("QuizEditorPage data-tour selectors", () => {
     );
   });
 
-  it('renders data-demo-qtype buttons in add-question dropdown', async () => {
+  it("renders data-demo-qtype buttons in add-question dropdown", async () => {
     render(
       <Wrapper initialRoute="/editor/quiz-1">
         <Routes>

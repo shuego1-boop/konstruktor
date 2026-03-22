@@ -1,6 +1,12 @@
 import { render, screen } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { StreakBadge } from "../src/components/StreakBadge";
+
+vi.mock("lottie-react", () => ({
+  default: (props: Record<string, unknown>) => (
+    <div data-testid="lottie-mock" data-loop={String(props.loop)} />
+  ),
+}));
 
 describe("StreakBadge", () => {
   it("renders streak count with x suffix", () => {

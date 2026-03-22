@@ -197,7 +197,7 @@ function FakeCursor({
         zIndex: 999999,
         pointerEvents: "none",
         transition:
-          "left 0.52s cubic-bezier(0.4,0,0.2,1), top 0.52s cubic-bezier(0.4,0,0.2,1)",
+          "left 0.52s cubic-bezier(0.4,0,0.2,1), top 0.52s cubic-bezier(0.4,0,0.2,1), opacity 0.35s ease",
         transform: `translate(-2px, -2px) scale(${clicking ? 0.72 : 1})`,
         transformOrigin: "top left",
         filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.55))",
@@ -310,76 +310,165 @@ function DemoSplashOverlay() {
         inset: 0,
         zIndex: 99999,
         background:
-          "linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #9333ea 100%)",
+          "linear-gradient(135deg, #1e1b4b 0%, #312e81 20%, #4338ca 45%, #7c3aed 70%, #6d28d9 100%)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        gap: 16,
+        overflow: "hidden",
       }}
     >
+      {/* Noise grain */}
       <div
         style={{
-          width: 88,
-          height: 88,
-          borderRadius: 22,
-          background: "rgba(255,255,255,0.15)",
-          backdropFilter: "blur(8px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+          position: "absolute",
+          inset: 0,
+          opacity: 0.04,
+          pointerEvents: "none",
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          backgroundSize: "128px 128px",
+        }}
+      />
+      {/* Ambient light */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background:
+            "radial-gradient(ellipse at 30% 20%, rgba(129,140,248,0.25) 0%, transparent 55%), radial-gradient(ellipse at 70% 75%, rgba(139,92,246,0.2) 0%, transparent 55%)",
+        }}
+      />
+      {/* Glow */}
+      <div
+        style={{
+          position: "absolute",
+          width: 320,
+          height: 320,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle, rgba(165,120,255,0.5) 0%, transparent 70%)",
+          filter: "blur(60px)",
+          animation: "splashGlow 0.6s ease-out forwards",
+        }}
+      />
+      {/* Icon */}
+      <svg
+        width="80"
+        height="80"
+        viewBox="168 67 44 45"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{
+          position: "relative",
+          filter: "drop-shadow(0 8px 32px rgba(0,0,0,0.3))",
+          animation:
+            "splashLogo 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
         }}
       >
-        <span
-          style={{
-            color: "#fff",
-            fontWeight: 900,
-            fontSize: 42,
-            letterSpacing: -2,
-          }}
-        >
-          K
-        </span>
-      </div>
-      <p
+        <rect
+          x="171"
+          y="70"
+          width="38"
+          height="39"
+          rx="4"
+          stroke="white"
+          strokeWidth="2.5"
+          fill="none"
+        />
+        <path
+          d="M180 85 L185 90 L195 78"
+          stroke="white"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <line
+          x1="180"
+          y1="97"
+          x2="198"
+          y2="97"
+          stroke="white"
+          strokeWidth="2"
+          strokeLinecap="round"
+          opacity="0.6"
+        />
+        <line
+          x1="180"
+          y1="103"
+          x2="193"
+          y2="103"
+          stroke="white"
+          strokeWidth="2"
+          strokeLinecap="round"
+          opacity="0.4"
+        />
+      </svg>
+      {/* App name */}
+      <h1
         style={{
-          color: "#fff",
+          position: "relative",
+          color: "white",
+          fontSize: "1.875rem",
           fontWeight: 700,
-          fontSize: "1.4rem",
-          letterSpacing: "0.04em",
-          margin: 0,
+          margin: "20px 0 0",
+          letterSpacing: "-0.02em",
+          animation: "splashHeading 0.5s ease-out 0.2s forwards",
+          opacity: 0,
         }}
       >
-        Konstruktor
-      </p>
+        КвизОК
+      </h1>
+      {/* Tagline */}
       <p
         style={{
-          color: "rgba(255,255,255,0.6)",
-          fontSize: "0.9rem",
-          margin: 0,
+          position: "relative",
+          color: "rgba(255,255,255,0.7)",
+          fontSize: "1rem",
+          margin: "8px 0 0",
+          fontWeight: 500,
+          letterSpacing: "0.04em",
+          animation: "splashTagline 0.5s ease-out 0.4s forwards",
+          opacity: 0,
         }}
       >
         Квизы, которые запоминаются
       </p>
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "rgba(255,255,255,0.7)",
-              animation: `splashDot 1s ease-in-out ${i * 0.22}s infinite`,
-            }}
-          />
-        ))}
-      </div>
+      {/* Progress bar */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          height: 3,
+          background:
+            "linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.5), rgba(255,255,255,0.1))",
+          boxShadow: "0 0 12px rgba(255,255,255,0.35)",
+          animation: "splashBar 2.2s ease-in-out forwards",
+        }}
+      />
       <style>{`
-        @keyframes splashDot {
-          0%, 100% { opacity: 0.3; transform: translateY(0); }
-          50% { opacity: 1; transform: translateY(-6px); }
+        @keyframes splashGlow {
+          from { opacity: 0; transform: scale(0.5); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes splashLogo {
+          from { opacity: 0; transform: scale(0.3) rotate(-8deg); }
+          to { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+        @keyframes splashHeading {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes splashTagline {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 0.7; transform: translateY(0); }
+        }
+        @keyframes splashBar {
+          from { width: 0%; }
+          to { width: 100%; }
         }
       `}</style>
     </div>
@@ -469,6 +558,19 @@ export function DemoRunner() {
     );
   }
 
+  /** Triggers mouseenter/mouseover so CSS :hover children appear */
+  function triggerHover(el: HTMLElement) {
+    el.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+    el.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+  }
+
+  /** Throws if demo was aborted — call between phases */
+  function checkAbort() {
+    if (abortRef.current?.signal.aborted) {
+      throw new Error("aborted");
+    }
+  }
+
   // ── Сценарий ─────────────────────────────────────────────────────────
 
   async function runScript() {
@@ -479,12 +581,14 @@ export function DemoRunner() {
     setShowDemoSplash(false);
     await sleep(350);
 
-    // ── Фаза 1: Создаём квиз биологии заранее (фоново) ──────────────────
+    checkAbort();
+
+    // ── Подготовка: создаём квиз биологии (для демонстрации ИИ) ──────────
     const bioId = await invoke<string>("create_quiz");
     await invoke("update_quiz", { id: bioId, data: makeBioQuizData() });
-    queryClient.invalidateQueries({ queryKey: ["quizzes"] });
+    // Не инвалидируем сейчас — квиз появится после ИИ-оверлея
 
-    // ── Фаза 2: Главное меню / дашборд ───────────────────────────────────
+    // ── Фаза 1: Обзор дашборда ───────────────────────────────────────────
     navigate("/dashboard");
     await sleep(1000);
     setCursor((c) => ({
@@ -495,65 +599,54 @@ export function DemoRunner() {
     }));
     await sleep(400);
 
-    // Осматриваем интерфейс
+    // Заголовок
     await moveToEl('[data-tour="header-title"]');
-    await sleep(600);
+    await sleep(500);
+
+    // Навигация
     await moveToEl('[data-tour="nav-settings"]');
     await sleep(400);
-    await moveToEl('[data-tour="tour-btn"]');
-    await sleep(400);
 
-    // Карточки квизов
+    // Карточка квиза
     const firstCard = document.querySelector<HTMLElement>(
       '[data-tour="quiz-card"]',
     );
     if (firstCard) {
+      triggerHover(firstCard);
       const r = firstCard.getBoundingClientRect();
       await moveCursor(r.left + r.width / 2, r.top + r.height / 2);
-      await sleep(700);
-      const previewBtn = document.querySelector<HTMLElement>(
-        '[data-tour="preview-btn"]',
-      );
-      if (previewBtn) {
-        const rp = previewBtn.getBoundingClientRect();
-        await moveCursor(rp.left + rp.width / 2, rp.top + rp.height / 2);
-        await sleep(500);
-      }
+      await sleep(600);
     }
 
-    // ── Фаза 3: Режим ИИ ─────────────────────────────────────────────────
-    // Кликаем кнопку «+ Новый квиз» — открывает модал
-    await moveToEl('[data-tour="new-quiz"]');
-    await sleep(500);
-    await clickEl('[data-tour="new-quiz"]');
-    await sleep(700);
+    checkAbort();
 
-    // Вводим тему
+    // ── Фаза 2: Генерация через ИИ (баннер на дашборде) ──────────────────
     await typeInto(
-      '[data-demo="topic-input"]',
+      '[data-demo="ai-banner-input"]',
       "11 кл, Биология, Молекулярная биология",
     );
-    await sleep(600);
+    await sleep(400);
 
-    // Курсор к кнопке «✨ Создать квиз с ИИ» — наводимся, но не кликаем
-    const aiBtn = document.querySelector<HTMLElement>(
-      '[data-demo="ai-submit"]',
-    );
-    if (aiBtn) {
-      const r = aiBtn.getBoundingClientRect();
-      await moveCursor(r.left + r.width / 2, r.top + r.height / 2);
-      await sleep(700);
-    }
+    // Наводим на кнопку «Придумать»
+    await moveToEl('[data-demo="ai-banner-btn"]');
+    await sleep(400);
 
-    // Закрываем модал, показываем оверлей генерации
-    pressEsc();
-    await sleep(300);
+    // Имитация клика (без реального вызова — показываем оверлей)
+    setCursor((c) => ({ ...c, clicking: true }));
+    await sleep(150);
+    setCursor((c) => ({ ...c, clicking: false }));
+
+    // ИИ «создаёт» квиз
     setDemoAiOverlay(true);
     await sleep(3500);
     setDemoAiOverlay(false);
-    await sleep(300);
+    // Теперь показываем квиз в списке
+    await queryClient.invalidateQueries({ queryKey: ["quizzes"] });
+    await sleep(500);
 
-    // ── Фаза 4: Редактор квиза (созданного ИИ) ───────────────────────────
+    checkAbort();
+
+    // ── Фаза 3: Редактор (квиз биологии от ИИ) ──────────────────────────
     navigate(`/editor/${bioId}`);
     await waitFor('[data-tour="editor-questions"]');
     await sleep(900);
@@ -562,144 +655,258 @@ export function DemoRunner() {
     const questionItems = document.querySelectorAll<HTMLElement>(
       '[data-tour="editor-questions"] [data-demo-question]',
     );
-    const items = Array.from(questionItems).slice(0, 6);
-    if (items.length > 0) {
-      for (const item of items) {
-        const r = item.getBoundingClientRect();
-        await moveCursor(r.left + r.width / 2, r.top + r.height / 2);
-        setCursor((c) => ({ ...c, clicking: true }));
-        await sleep(100);
-        item.click();
-        await sleep(100);
-        setCursor((c) => ({ ...c, clicking: false }));
-        await sleep(750);
-      }
-    } else {
-      const sidebar = document.querySelector('[data-tour="editor-questions"]');
-      if (sidebar) {
-        const r = sidebar.getBoundingClientRect();
-        for (const frac of [0.2, 0.4, 0.6, 0.8]) {
-          await moveCursor(r.left + r.width / 2, r.top + r.height * frac);
-          await sleep(700);
-        }
-      }
+    const qItems = Array.from(questionItems).slice(0, 5);
+    for (const item of qItems) {
+      const r = item.getBoundingClientRect();
+      await moveCursor(r.left + r.width / 2, r.top + r.height / 2);
+      setCursor((c) => ({ ...c, clicking: true }));
+      await sleep(100);
+      item.click();
+      await sleep(100);
+      setCursor((c) => ({ ...c, clicking: false }));
+      await sleep(650);
     }
 
-    // Смотрим на редактор и настройки
+    // Смотрим на основную область и настройки
     await moveToEl('[data-tour="editor-main"]');
-    await sleep(600);
-    await moveToEl('[data-tour="editor-settings"]');
     await sleep(500);
-    await moveToEl('[data-tour="editor-settings-actions"]');
-    await sleep(600);
-
-    // ── Фаза 5: Назад на дашборд ─────────────────────────────────────────
-    await clickEl('[data-tour="editor-back"]');
-    await waitFor('[data-tour="header-title"]');
-    await sleep(900);
-
-    // ── Фаза 6: Ручной режим создания ────────────────────────────────────
-    await moveToEl('[data-tour="new-quiz"]');
-    await sleep(400);
-    await clickEl('[data-tour="new-quiz"]');
-    await sleep(600);
-
-    // Вводим тему
-    await typeInto(
-      '[data-demo="topic-input"]',
-      "11 кл, Математика, Производная",
-    );
-    await sleep(500);
-
-    // Кликаем «Создать пустой квиз →»
-    await clickEl('[data-demo="manual-create"]');
-    await waitFor('[data-tour="editor-add-question"]');
-    await sleep(900);
-
-    // Q1: Один ответ
-    await addQuestionType("single_choice");
-    await sleep(400);
-    await typeQuestionText("Чему равна производная функции f(x) = x²?");
-    await sleep(400);
-    await addOption("x");
-    await addOption("3x²");
-    await addOption("2x");
-    await addOption("2x²");
-    await sleep(200);
-    await markOptionCorrect(2);
-    await sleep(500);
-
-    // Q2: Да / Нет
-    await addQuestionType("true_false");
-    await sleep(400);
-    await typeQuestionText("Производная постоянной функции равна нулю");
-    await sleep(700);
-
-    // Q3: Несколько ответов
-    await addQuestionType("multiple_choice");
-    await sleep(400);
-    await typeQuestionText(
-      "Какие из функций имеют производную, равную самой функции?",
-    );
-    await sleep(400);
-    await addOption("sin(x)");
-    await addOption("eˣ");
-    await addOption("ln(x)");
-    await sleep(200);
-    await markOptionCorrect(1);
-    await sleep(600);
-
-    // Q4: Текстовый ответ
-    await addQuestionType("text_input");
-    await sleep(400);
-    await typeQuestionText(
-      "Как называется геометрический смысл производной в точке?",
-    );
-    await sleep(600);
-
     await moveToEl('[data-tour="editor-settings"]');
     await sleep(500);
 
-    // ── Фаза 7: Назад на дашборд ─────────────────────────────────────────
+    checkAbort();
+
+    // ── Фаза 4: Прохождение квиза биологии (режим ученика) ───────────────
+    // Возвращаемся на дашборд и кликаем кнопку превью на карточке
     await clickEl('[data-tour="editor-back"]');
     await waitFor('[data-tour="header-title"]');
     await queryClient.invalidateQueries({ queryKey: ["quizzes"] });
-    await sleep(1000);
+    await sleep(800);
 
-    // ── Фаза 8: Превью квиза биологии ────────────────────────────────────
-    // Ищем карточку биологии или просто navigateById
-    const bioCard = Array.from(
-      document.querySelectorAll<HTMLElement>('[data-tour="quiz-card"]'),
-    ).find((el) => el.textContent?.includes("Молекулярная"));
+    // Находим карточку биологии, наводим, кликаем превью
+    const bioCard = document.querySelector<HTMLElement>(
+      `[data-demo-quiz-id="${bioId}"]`,
+    );
     if (bioCard) {
       const r = bioCard.getBoundingClientRect();
       await moveCursor(r.left + r.width / 2, r.top + r.height / 2);
-      await sleep(600);
+      triggerHover(bioCard);
+      await sleep(800);
+      // Кликаем кнопку превью внутри карточки
+      const previewBtn = bioCard.querySelector<HTMLElement>(
+        '[data-demo="preview-btn"]',
+      );
+      if (previewBtn) {
+        triggerHover(previewBtn);
+        const rp = previewBtn.getBoundingClientRect();
+        await moveCursor(rp.left + rp.width / 2, rp.top + rp.height / 2);
+        await sleep(500);
+        setCursor((c) => ({ ...c, clicking: true }));
+        await sleep(110);
+        previewBtn.click();
+        await sleep(110);
+        setCursor((c) => ({ ...c, clicking: false }));
+        await sleep(400);
+      } else {
+        navigate(`/preview/${bioId}`);
+      }
+    } else {
+      navigate(`/preview/${bioId}`);
     }
-    navigate(`/preview/${bioId}`);
+
     await waitFor('[data-demo="start-quiz"]');
     await sleep(1200);
 
     await clickEl('[data-demo="start-quiz"]');
     await sleep(600);
 
-    // Отвечаем на вопросы
-    await answerSingleChoice(1); // Нуклеотид — правильно
+    // Q1: Нуклеотид ✓
+    await answerSingleChoice(1);
     await clickNextAfterFeedback();
-    await answerTrueFalse(true); // ДНК — двойная спираль — правильно
+    // Q2: ДНК спираль — Да ✓
+    await answerTrueFalse(true);
     await clickNextAfterFeedback();
-    await answerSingleChoice(2); // Транскрипция — правильно
+    // Q3: Транскрипция ✓
+    await answerSingleChoice(2);
     await clickNextAfterFeedback();
-    await answerSingleChoice(0); // 23 — неправильно (для реализма)
+    // Q4: 23 ✗ (для реализма)
+    await answerSingleChoice(0);
     await clickNextAfterFeedback();
-    await answerTrueFalse(false); // Митоз ≠ 4 гаплоидных — правильно
+    // Q5: Митоз ≠ 4 гаплоидных — Нет ✓
+    await answerTrueFalse(false);
     await clickNextAfterFeedback();
-    await answerSingleChoice(2); // Рибосомы — правильно
-    await sleep(2500);
+    // Q6: Рибосомы ✓
+    await answerSingleChoice(2);
+    await clickNextAfterFeedback();
 
-    // Смотрим результаты
+    // Экран результатов
     await waitFor('[data-demo="results-screen"]').catch(() => null);
-    await sleep(3000);
+    await sleep(2000);
+
+    checkAbort();
+
+    // ── Фаза 5: Обратно на дашборд ──────────────────────────────────────
+    navigate("/dashboard");
+    await waitFor('[data-tour="header-title"]');
+    await sleep(500);
+
+    checkAbort();
+
+    // ── Фаза 6: Галерея шаблонов ────────────────────────────────────────
+    await clickEl('[data-demo="templates-btn"]');
+    await sleep(800);
+
+    const tplCards = document.querySelectorAll<HTMLElement>(
+      '[data-demo="template-card"]',
+    );
+    const tplArr = Array.from(tplCards).slice(0, 5);
+    for (const card of tplArr) {
+      const r = card.getBoundingClientRect();
+      await moveCursor(r.left + r.width / 2, r.top + r.height / 2);
+      await sleep(450);
+    }
+    await sleep(300);
+
+    // Закрываем модал шаблонов кликом по оверлею
+    const tplOverlay = document.querySelector<HTMLElement>(
+      ".fixed.inset-0.z-50",
+    );
+    if (tplOverlay) {
+      tplOverlay.click();
+    } else {
+      pressEsc();
+    }
+    await sleep(600);
+
+    checkAbort();
+
+    // ── Фаза 7: Ручное создание квиза ───────────────────────────────────
+    // Наводим на кнопку «Пустой квиз» и кликаем — сразу открывает редактор
+    await moveToEl('[data-tour="new-quiz"]');
+    await sleep(400);
+    await clickEl('[data-tour="new-quiz"]');
+    await waitFor('[data-tour="editor-add-question"]');
+    await sleep(900);
+
+    // Q1: Один ответ
+    await addQuestionType("single_choice");
+    await sleep(300);
+    await typeQuestionText("Чему равна производная функции f(x) = x²?");
+    await sleep(300);
+    await addOption("x");
+    await addOption("3x²");
+    await addOption("2x");
+    await addOption("2x²");
+    await sleep(200);
+    await markOptionCorrect(2); // 2x
+    await sleep(400);
+
+    // Q2: Да / Нет
+    await addQuestionType("true_false");
+    await sleep(300);
+    await typeQuestionText("Производная постоянной функции равна нулю");
+    await sleep(600);
+
+    // Q3: Один ответ
+    await addQuestionType("single_choice");
+    await sleep(300);
+    await typeQuestionText("Какая функция является первообразной для cos(x)?");
+    await sleep(300);
+    await addOption("sin(x)");
+    await addOption("-sin(x)");
+    await addOption("cos(x)");
+    await addOption("tg(x)");
+    await sleep(200);
+    await markOptionCorrect(0); // sin(x)
+    await sleep(400);
+
+    // Смотрим на настройки
+    await moveToEl('[data-tour="editor-settings"]');
+    await sleep(500);
+
+    checkAbort();
+
+    // Ждём автосохранение
+    await sleep(2000);
+
+    // Получаем ID квиза из URL
+    const mathId = window.location.pathname.split("/").pop();
+
+    // ── Фаза 8: Прохождение квиза математики (режим ученика) ─────────────
+    if (mathId) {
+      // Возвращаемся на дашборд
+      await clickEl('[data-tour="editor-back"]');
+      await waitFor('[data-tour="header-title"]');
+      await queryClient.invalidateQueries({ queryKey: ["quizzes"] });
+      await sleep(800);
+
+      // Находим карточку математики, наводим, кликаем превью
+      const mathCard = document.querySelector<HTMLElement>(
+        `[data-demo-quiz-id="${mathId}"]`,
+      );
+      if (mathCard) {
+        const r = mathCard.getBoundingClientRect();
+        await moveCursor(r.left + r.width / 2, r.top + r.height / 2);
+        triggerHover(mathCard);
+        await sleep(800);
+        const previewBtn = mathCard.querySelector<HTMLElement>(
+          '[data-demo="preview-btn"]',
+        );
+        if (previewBtn) {
+          triggerHover(previewBtn);
+          const rp = previewBtn.getBoundingClientRect();
+          await moveCursor(rp.left + rp.width / 2, rp.top + rp.height / 2);
+          await sleep(500);
+          setCursor((c) => ({ ...c, clicking: true }));
+          await sleep(110);
+          previewBtn.click();
+          await sleep(110);
+          setCursor((c) => ({ ...c, clicking: false }));
+          await sleep(400);
+        } else {
+          navigate(`/preview/${mathId}`);
+        }
+      } else {
+        navigate(`/preview/${mathId}`);
+      }
+
+      await waitFor('[data-demo="start-quiz"]');
+      await sleep(1000);
+
+      await clickEl('[data-demo="start-quiz"]');
+      await sleep(600);
+
+      // Q1: 2x ✓
+      await answerSingleChoice(2);
+      await clickNextAfterFeedback();
+      // Q2: Да ✓
+      await answerTrueFalse(true);
+      await clickNextAfterFeedback();
+      // Q3: sin(x) ✓
+      await answerSingleChoice(0);
+      await clickNextAfterFeedback();
+
+      // Результаты
+      await waitFor('[data-demo="results-screen"]').catch(() => null);
+      await sleep(2000);
+    }
+
+    checkAbort();
+
+    // ── Фаза 9: Настройки ────────────────────────────────────────────────
+    navigate("/settings");
+    await sleep(1000);
+    const settingsContent =
+      document.querySelector<HTMLElement>(".overflow-y-auto");
+    if (settingsContent) {
+      const r = settingsContent.getBoundingClientRect();
+      await moveCursor(r.left + r.width / 2, r.top + r.height * 0.3);
+      await sleep(700);
+      await moveCursor(r.left + r.width / 2, r.top + r.height * 0.6);
+      await sleep(700);
+    }
+    await sleep(400);
+
+    checkAbort();
 
     // ── Финал ────────────────────────────────────────────────────────────
     navigate("/dashboard");
@@ -786,6 +993,51 @@ export function DemoRunner() {
     await sleep(100);
     setCursor((c) => ({ ...c, clicking: false }));
     await sleep(300);
+  }
+
+  async function addMatchingPair(left: string, right: string) {
+    const added = await clickElByText("+ Добавить пару");
+    if (!added) return;
+    await sleep(200);
+    const leftInputs = document.querySelectorAll<HTMLInputElement>(
+      'input[placeholder="Левая часть…"]',
+    );
+    const rightInputs = document.querySelectorAll<HTMLInputElement>(
+      'input[placeholder="Правая часть…"]',
+    );
+    const leftEl = leftInputs[leftInputs.length - 1];
+    const rightEl = rightInputs[rightInputs.length - 1];
+    if (leftEl) {
+      const r = leftEl.getBoundingClientRect();
+      await moveCursor(r.left + r.width / 2, r.top + r.height / 2);
+      leftEl.focus();
+      reactSetValue(leftEl, left);
+      await sleep(200);
+    }
+    if (rightEl) {
+      const r = rightEl.getBoundingClientRect();
+      await moveCursor(r.left + r.width / 2, r.top + r.height / 2);
+      rightEl.focus();
+      reactSetValue(rightEl, right);
+      await sleep(200);
+    }
+    await sleep(150);
+  }
+
+  async function addOrderingItem(text: string) {
+    const added = await clickElByText("+ Добавить элемент");
+    if (!added) return;
+    await sleep(200);
+    const inputs = document.querySelectorAll<HTMLInputElement>(
+      'input[placeholder="Элемент…"]',
+    );
+    const last = inputs[inputs.length - 1];
+    if (!last) return;
+    const r = last.getBoundingClientRect();
+    await moveCursor(r.left + r.width / 2, r.top + r.height / 2);
+    last.focus();
+    reactSetValue(last, text);
+    await sleep(200);
   }
 
   async function answerSingleChoice(optIndex: number) {

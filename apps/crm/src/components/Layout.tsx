@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link, Outlet, useNavigate } from "react-router";
+import { Link, Outlet, useNavigate, useLocation } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "../hooks/useAuth.ts";
 
 type Me = {
@@ -13,6 +14,7 @@ type Me = {
 export function Layout() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const qc = useQueryClient();
   const [copied, setCopied] = useState<"org" | "token" | null>(null);
   const [showToken, setShowToken] = useState(false);
@@ -67,15 +69,22 @@ export function Layout() {
           <div className="flex items-center gap-6">
             <Link
               to="/dashboard"
-              className="text-base font-bold text-indigo-700 tracking-tight hover:text-indigo-800 transition-colors"
+              className="flex items-center gap-2 text-base font-bold text-indigo-700 tracking-tight hover:text-indigo-800 transition-colors"
             >
-              Konstruktor CRM
+              <img src="/logo.svg" alt="КвизОК" className="h-8 w-8" />
+              КвизОК CRM
             </Link>
             <Link
               to="/dashboard"
               className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
             >
               Квизы
+            </Link>
+            <Link
+              to="/students"
+              className="text-sm text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              Ученики
             </Link>
           </div>
 
@@ -97,7 +106,7 @@ export function Layout() {
               <div className="relative">
                 <button
                   onClick={() => setShowToken((v) => !v)}
-                  title="Токен для Konstruktor Desktop"
+                  title="Токен для КвизОК Desktop"
                   className={`rounded-lg px-2.5 py-1.5 text-xs transition-colors ${
                     showToken
                       ? "bg-slate-200 text-slate-700"
@@ -119,8 +128,8 @@ export function Layout() {
                         Токен для Desktop-приложения
                       </p>
                       <p className="text-xs text-slate-500 mb-3 leading-relaxed">
-                        Вставьте в Konstruktor Desktop → Настройки → Токен
-                        (Bearer), чтобы синхронизировать квизы с сервером.
+                        Вставьте в КвизОК Desktop → Настройки → Токен (Bearer),
+                        чтобы синхронизировать квизы с сервером.
                       </p>
                       {me?.apiToken ? (
                         <div className="flex flex-col gap-2">
@@ -169,7 +178,17 @@ export function Layout() {
       </nav>
 
       {/* ── Page content ─────────────────────────────────────────────── */}
-      <Outlet />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+        >
+          <Outlet />
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

@@ -20,6 +20,11 @@ import {
   StreakBadge,
   AnswerFeedback,
   Spinner,
+  Dialog,
+  staggerContainerFast,
+  staggerItem,
+  slideInRight,
+  popIn,
 } from "@konstruktor/ui";
 import { saveSession } from "../services/db.ts";
 import { syncPendingSessions } from "../services/sync.ts";
@@ -45,37 +50,16 @@ async function haptic(style: ImpactStyle = ImpactStyle.Light): Promise<void> {
   }
 }
 
-// ── Framer Motion variants ──────────────────────────────────────────────────
-const staggerContainer = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
-};
-const optionVariant = {
-  hidden: { opacity: 0, y: 18, scale: 0.96 },
-  show: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { type: "spring", stiffness: 340, damping: 26 },
-  },
-};
+// ── Framer Motion variants (shared from @konstruktor/ui, plus local aliases) ──
 const questionSlide = {
-  initial: { opacity: 0, x: 60 },
-  animate: {
-    opacity: 1,
-    x: 0,
-    transition: { type: "spring", stiffness: 280, damping: 28 },
-  },
-  exit: { opacity: 0, x: -60, transition: { duration: 0.18 } },
+  initial: slideInRight.hidden,
+  animate: slideInRight.visible,
+  exit: slideInRight.exit,
 };
 const countdownVariant = {
-  initial: { scale: 0.3, opacity: 0 },
-  animate: {
-    scale: 1,
-    opacity: 1,
-    transition: { type: "spring", stiffness: 400, damping: 20 },
-  },
-  exit: { scale: 1.8, opacity: 0, transition: { duration: 0.22 } },
+  initial: popIn.hidden,
+  animate: popIn.visible,
+  exit: popIn.exit,
 };
 
 export function QuizPage() {
@@ -85,6 +69,8 @@ export function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [muted, setMutedState] = useState(isMuted());
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [shakeKey, setShakeKey] = useState(0);
 
   const engineRef = useRef<QuizEngine | null>(null);
   const [phase, setPhase] = useState<
@@ -218,6 +204,7 @@ export function QuizPage() {
               } else {
                 playWrong();
                 void haptic(ImpactStyle.Light);
+                setShakeKey((k) => k + 1);
               }
             }
           }, 0);
@@ -288,8 +275,17 @@ export function QuizPage() {
     }
 
     const answers = eng.getAnswers();
-    setLastCorrect(answers[answers.length - 1]?.isCorrect ?? false);
+    const wasCorrect = answers[answers.length - 1]?.isCorrect ?? false;
+    setLastCorrect(wasCorrect);
     setPhase("feedback");
+    if (wasCorrect) {
+      playCorrect();
+      void haptic(ImpactStyle.Medium);
+    } else {
+      playWrong();
+      void haptic(ImpactStyle.Light);
+      setShakeKey((k) => k + 1);
+    }
   }
 
   function handleHotspotClick(x: number, y: number) {
@@ -298,9 +294,18 @@ export function QuizPage() {
     stopTimer();
     setHotspotClick({ x, y });
     eng.submitAnswer({ type: "hotspot", x, y });
-    const answers = eng.getAnswers();
-    setLastCorrect(answers[answers.length - 1]?.isCorrect ?? false);
+    const hAnswers = eng.getAnswers();
+    const hCorrect = hAnswers[hAnswers.length - 1]?.isCorrect ?? false;
+    setLastCorrect(hCorrect);
     setPhase("feedback");
+    if (hCorrect) {
+      playCorrect();
+      void haptic(ImpactStyle.Medium);
+    } else {
+      playWrong();
+      void haptic(ImpactStyle.Light);
+      setShakeKey((k) => k + 1);
+    }
   }
 
   async function handleNext() {
@@ -371,13 +376,7 @@ export function QuizPage() {
         <AnimatePresence mode="wait">
           <motion.div
             key={countdownNum}
-            initial={{ scale: 0.3, opacity: 0 }}
-            animate={{
-              scale: 1,
-              opacity: 1,
-              transition: { type: "spring", stiffness: 400, damping: 20 },
-            }}
-            exit={{ scale: 1.8, opacity: 0, transition: { duration: 0.22 } }}
+            {...countdownVariant}
             className="text-[140px] font-black leading-none select-none"
             style={{
               background: "linear-gradient(135deg, #818cf8, #a78bfa)",
@@ -414,7 +413,7 @@ export function QuizPage() {
       <header className="px-5 py-3 border-b border-slate-700 flex items-center gap-4">
         <button
           className="text-slate-400 hover:text-white flex-shrink-0"
-          onClick={() => navigate("/home")}
+          onClick={() => setShowExitDialog(true)}
           aria-label="На главную"
         >
           ←
@@ -440,7 +439,10 @@ export function QuizPage() {
         </button>
       </header>
 
-      <main className="flex-1 flex flex-col p-5 max-w-2xl mx-auto w-full">
+      <main
+        key={shakeKey}
+        className={`flex-1 flex flex-col p-5 max-w-2xl mx-auto w-full ${isFeedback && !lastCorrect ? "animate-shake" : ""}`}
+      >
         <TimerBar elapsedMs={elapsed} durationMs={timeLimit} className="mb-5" />
 
         {streak >= 2 && (
@@ -454,10 +456,18 @@ export function QuizPage() {
             </p>
 
             {currentQ.type === "single_choice" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <motion.div
+                variants={staggerContainerFast}
+                initial="hidden"
+                animate="visible"
+                key={`sc-${questionIndex}`}
+                className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+              >
                 {(currentQ as SingleChoiceQuestion).options.map((opt) => (
-                  <button
+                  <motion.button
                     key={opt.id}
+                    variants={staggerItem}
+                    whileTap={{ scale: 0.97 }}
                     disabled={isFeedback}
                     className={`rounded-xl border-2 px-5 py-4 text-left font-medium transition-colors min-h-[56px] ${
                       selectedId === opt.id
@@ -467,18 +477,26 @@ export function QuizPage() {
                     onClick={() => setSelectedId(opt.id)}
                   >
                     {opt.text}
-                  </button>
+                  </motion.button>
                 ))}
-              </div>
+              </motion.div>
             )}
 
             {currentQ.type === "multiple_choice" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <motion.div
+                variants={staggerContainerFast}
+                initial="hidden"
+                animate="visible"
+                key={`mc-${questionIndex}`}
+                className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+              >
                 {(currentQ as MultipleChoiceQuestion).options.map((opt) => {
                   const checked = selectedIds.includes(opt.id);
                   return (
-                    <button
+                    <motion.button
                       key={opt.id}
+                      variants={staggerItem}
+                      whileTap={{ scale: 0.97 }}
                       disabled={isFeedback}
                       className={`rounded-xl border-2 px-5 py-4 text-left font-medium transition-colors min-h-[56px] ${
                         checked
@@ -501,10 +519,10 @@ export function QuizPage() {
                         }`}
                       />
                       {opt.text}
-                    </button>
+                    </motion.button>
                   );
                 })}
-              </div>
+              </motion.div>
             )}
 
             {/* true_false */}
@@ -657,12 +675,14 @@ export function QuizPage() {
                                     return a;
                                   })
                                 }
+                                aria-label={`Переместить «${item.text}» вверх`}
                                 className="rounded bg-slate-700 px-2 py-0.5 text-xs disabled:opacity-20 hover:bg-slate-600"
                               >
                                 ↑
                               </button>
                               <button
                                 disabled={idx === orderingItems.length - 1}
+                                aria-label={`Переместить «${item.text}» вниз`}
                                 onClick={() =>
                                   setOrderingItems((prev) => {
                                     const a = [...prev];
@@ -817,6 +837,31 @@ export function QuizPage() {
           </>
         )}
       </main>
+
+      {/* Exit confirmation dialog */}
+      <Dialog
+        open={showExitDialog}
+        onClose={() => setShowExitDialog(false)}
+        title="Выйти из квиза?"
+      >
+        <p className="text-sm text-slate-600 mb-6">
+          Ваш прогресс не будет сохранён. Вы уверены, что хотите выйти?
+        </p>
+        <div className="flex gap-3">
+          <button
+            className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            onClick={() => setShowExitDialog(false)}
+          >
+            Продолжить
+          </button>
+          <button
+            className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+            onClick={() => navigate("/home")}
+          >
+            Выйти
+          </button>
+        </div>
+      </Dialog>
     </div>
   );
 }

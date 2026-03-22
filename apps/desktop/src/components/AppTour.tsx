@@ -12,7 +12,7 @@ import { invoke } from "@tauri-apps/api/core";
 const STEPS: Step[] = [
   {
     target: '[data-tour="header-title"]',
-    title: "👋 Добро пожаловать в Konstruktor!",
+    title: "👋 Добро пожаловать в КвизОК!",
     content:
       "Это главный экран — здесь хранятся все ваши квизы. Проведём короткий тур, чтобы вы освоились.",
     placement: "bottom",

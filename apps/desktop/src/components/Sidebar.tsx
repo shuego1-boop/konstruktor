@@ -1,26 +1,20 @@
 import { useNavigate, useLocation } from "react-router";
 import {
-  House,
   Books,
   UsersThree,
   ChartLineUp,
   Files,
   FolderStar,
-  Lightbulb,
 } from "@phosphor-icons/react";
 
 type NavItem = {
   label: string;
   icon: React.ReactNode;
   path: string;
+  comingSoon?: boolean;
 };
 
 const NAV_ITEMS: NavItem[] = [
-  {
-    label: "Главная",
-    icon: <House size={24} weight="duotone" />,
-    path: "/dashboard",
-  },
   {
     label: "Мои квизы",
     icon: <Books size={24} weight="duotone" />,
@@ -30,11 +24,13 @@ const NAV_ITEMS: NavItem[] = [
     label: "Ученики",
     icon: <UsersThree size={24} weight="duotone" />,
     path: "#",
+    comingSoon: true,
   },
   {
     label: "Результаты",
     icon: <ChartLineUp size={24} weight="duotone" />,
     path: "#",
+    comingSoon: true,
   },
 ];
 
@@ -43,11 +39,13 @@ const TOOL_ITEMS: NavItem[] = [
     label: "Библиотека",
     icon: <Files size={24} weight="duotone" />,
     path: "#",
+    comingSoon: true,
   },
   {
     label: "Шаблоны",
     icon: <FolderStar size={24} weight="duotone" />,
     path: "#",
+    comingSoon: true,
   },
 ];
 
@@ -82,9 +80,12 @@ export function Sidebar({ activePage = "dashboard" }: SidebarProps) {
           className="flex items-center gap-3 text-slate-900 cursor-pointer hover:opacity-80 transition-opacity"
           onClick={() => navigate("/dashboard")}
         >
-          <div className="w-9 h-9 rounded-[14px] bg-linear-to-br from-primary-500 to-purple-500 flex items-center justify-center text-white shadow-sm">
-            <Lightbulb size={20} weight="bold" />
-          </div>
+          <img
+            src="/logo.svg"
+            alt="КвизОК"
+            className="w-9 h-9 rounded-[10px] shadow-sm"
+            draggable={false}
+          />
           <span className="text-2xl font-extrabold tracking-tight">
             Квиз<span className="text-primary-600">ОК</span>
           </span>
@@ -98,23 +99,32 @@ export function Sidebar({ activePage = "dashboard" }: SidebarProps) {
           return (
             <button
               key={item.label}
-              onClick={() => handleNav(item.path)}
+              onClick={() => !item.comingSoon && handleNav(item.path)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-[15px] transition-colors text-left group ${
-                active
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-primary-600"
+                item.comingSoon
+                  ? "text-slate-300 cursor-default"
+                  : active
+                    ? "bg-primary-50 text-primary-700"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-primary-600"
               }`}
             >
               <span
                 className={
-                  active
-                    ? "text-primary-600"
-                    : "text-slate-400 group-hover:text-primary-500 transition-colors"
+                  item.comingSoon
+                    ? "text-slate-300"
+                    : active
+                      ? "text-primary-600"
+                      : "text-slate-400 group-hover:text-primary-500 transition-colors"
                 }
               >
                 {item.icon}
               </span>
               {item.label}
+              {item.comingSoon && (
+                <span className="ml-auto text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                  Скоро
+                </span>
+              )}
             </button>
           );
         })}
@@ -129,13 +139,28 @@ export function Sidebar({ activePage = "dashboard" }: SidebarProps) {
         {TOOL_ITEMS.map((item) => (
           <button
             key={item.label}
-            onClick={() => handleNav(item.path)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 hover:bg-slate-50 hover:text-primary-600 transition-colors font-bold text-[15px] text-left group"
+            onClick={() => !item.comingSoon && handleNav(item.path)}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-[15px] text-left group transition-colors ${
+              item.comingSoon
+                ? "text-slate-300 cursor-default"
+                : "text-slate-500 hover:bg-slate-50 hover:text-primary-600"
+            }`}
           >
-            <span className="text-slate-400 group-hover:text-primary-500 transition-colors">
+            <span
+              className={
+                item.comingSoon
+                  ? "text-slate-300"
+                  : "text-slate-400 group-hover:text-primary-500 transition-colors"
+              }
+            >
               {item.icon}
             </span>
             {item.label}
+            {item.comingSoon && (
+              <span className="ml-auto text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                Скоро
+              </span>
+            )}
           </button>
         ))}
 

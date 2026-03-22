@@ -8,6 +8,7 @@ import { uploadsRoute } from "./routes/uploads.route.ts";
 import { devicesRoute } from "./routes/devices.route.ts";
 import { packsRoute } from "./routes/packs.route.ts";
 import { meRoute } from "./routes/me.route.ts";
+import { leaderboardRoute } from "./routes/leaderboard.route.ts";
 import { auth } from "./lib/auth.ts";
 
 const app = new Hono();
@@ -38,6 +39,7 @@ app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 // ─── Routes ─────────────────────────────────────────────────────────────────
 
 app.route("/quizzes", quizzesRoute);
+app.route("/quizzes", leaderboardRoute);
 app.route("/sessions", sessionsRoute);
 app.route("/uploads", uploadsRoute);
 app.route("/devices", devicesRoute);

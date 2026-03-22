@@ -2,6 +2,7 @@
 import { useParams, useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
+import confetti from "canvas-confetti";
 import type {
   Quiz,
   Question,
@@ -15,26 +16,36 @@ import type {
 } from "@konstruktor/shared";
 import { QuizEngine } from "@konstruktor/quiz-engine";
 import { Spinner } from "@konstruktor/ui";
+import {
+  isMuted,
+  toggleMute,
+  playSelect,
+  playCorrect,
+  playWrong,
+  playTick,
+  playFinishWin,
+  playFinishLose,
+} from "../services/sound.ts";
 
 type QuizWithBg = Quiz & { backgroundUrl?: string };
 
 // ── colours matching Kahoot palette but with gradients ─────────────────────
 const TILE_COLORS = [
   {
-    bg: "linear-gradient(145deg,#e21b3c 0%,#c01535 100%)",
-    glow: "rgba(226,27,60,0.55)",
+    bg: "linear-gradient(145deg,#e11d48 0%,#9f1239 100%)",
+    glow: "rgba(225,29,72,0.55)",
   },
   {
-    bg: "linear-gradient(145deg,#1368ce 0%,#0d52a8 100%)",
-    glow: "rgba(19,104,206,0.55)",
+    bg: "linear-gradient(145deg,#2563eb 0%,#1e3a8a 100%)",
+    glow: "rgba(37,99,235,0.55)",
   },
   {
-    bg: "linear-gradient(145deg,#d89e00 0%,#b07e00 100%)",
-    glow: "rgba(216,158,0,0.55)",
+    bg: "linear-gradient(145deg,#d97706 0%,#92400e 100%)",
+    glow: "rgba(217,119,6,0.55)",
   },
   {
-    bg: "linear-gradient(145deg,#26890c 0%,#1c6b09 100%)",
-    glow: "rgba(38,137,12,0.55)",
+    bg: "linear-gradient(145deg,#059669 0%,#064e3b 100%)",
+    glow: "rgba(5,150,105,0.55)",
   },
   {
     bg: "linear-gradient(145deg,#8b21b5 0%,#6f1990 100%)",
@@ -141,11 +152,20 @@ export function PreviewPage() {
     x: number;
     y: number;
   } | null>(null);
+  // sound
+  const [muted, setMutedState] = useState(isMuted());
+  // shake animation key — increments on wrong answer to re-trigger
+  const [shakeKey, setShakeKey] = useState(0);
 
   function startTimer(limit: number) {
     timerRef.current = setInterval(() => {
       setElapsed((p) => {
         const next = p + 100;
+        // Tick sound in last 5 seconds (every second)
+        const remaining = limit - next;
+        if (remaining > 0 && remaining <= 5000 && remaining % 1000 < 100) {
+          playTick();
+        }
         if (next >= limit) {
           clearInterval(timerRef.current!);
           timerRef.current = null;
@@ -207,7 +227,14 @@ export function PreviewPage() {
     const engine = engineRef.current;
     const answers = engine!.getAnswers();
     const last = answers[answers.length - 1];
-    setLastCorrect(last?.isCorrect ?? false);
+    const correct = last?.isCorrect ?? false;
+    setLastCorrect(correct);
+    if (correct) {
+      playCorrect();
+    } else {
+      playWrong();
+      setShakeKey((k) => k + 1);
+    }
     setState("feedback");
   }
 
@@ -216,6 +243,7 @@ export function PreviewPage() {
     const engine = engineRef.current;
     if (state !== "playing" || !engine) return;
     stopTimer();
+    playSelect();
     setSelectedSingle(optionId);
     engine.submitAnswer({ type: "single_choice", optionId });
     recordResult();
@@ -225,6 +253,7 @@ export function PreviewPage() {
     const engine = engineRef.current;
     if (state !== "playing" || !engine) return;
     stopTimer();
+    playSelect();
     setSelectedSingle(value ? "true" : "false");
     engine.submitAnswer({ type: "true_false", value });
     recordResult();
@@ -296,6 +325,36 @@ export function PreviewPage() {
     engineRef.current.next();
     if (engineRef.current.getState() === "completed") {
       setState("finished");
+      // Sound + confetti on completion
+      const r = engineRef.current.getResult();
+      if (r) {
+        const pct = r.totalPoints > 0 ? r.earnedPoints / r.totalPoints : 0;
+        if (pct >= 0.6) {
+          playFinishWin();
+          // 3-wave confetti burst
+          void confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+          setTimeout(
+            () =>
+              void confetti({
+                particleCount: 50,
+                spread: 90,
+                origin: { x: 0.2, y: 0.5 },
+              }),
+            300,
+          );
+          setTimeout(
+            () =>
+              void confetti({
+                particleCount: 50,
+                spread: 90,
+                origin: { x: 0.8, y: 0.5 },
+              }),
+            600,
+          );
+        } else {
+          playFinishLose();
+        }
+      }
     } else {
       setSelectedSingle(null);
       setSelectedMulti([]);
@@ -390,7 +449,14 @@ export function PreviewPage() {
         }}
       />
       {/* Style tag for mesh keyframes */}
-      <style>{`@keyframes meshSpin { from { transform: rotate(0deg) scale(1.5); } to { transform: rotate(360deg) scale(1.5); } }`}</style>
+      <style>{`@keyframes meshSpin { from { transform: rotate(0deg) scale(1.5); } to { transform: rotate(360deg) scale(1.5); } }
+@keyframes shimmer { from { left: -100%; } to { left: 200%; } }
+.answer-tile-hover { position: relative; overflow: hidden; }
+.answer-tile-hover::after { content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(to right, transparent, rgba(255,255,255,0.12), transparent); transform: skewX(-20deg); pointer-events: none; transition: none; }
+.answer-tile-hover:not(:disabled):hover::after { left: 200%; transition: left 0.7s ease-in-out; }
+.answer-tile-hover:not(:disabled):hover { transform: translateY(-3px) !important; border-color: rgba(255,255,255,0.3) !important; box-shadow: 0 15px 30px rgba(0,0,0,0.4) !important; }
+.answer-tile-hover:not(:disabled):active { transform: translateY(1px) !important; }
+`}</style>
       {/* Overlay: lighter in playing so the art breathes; darker for idle/finished */}
       {bgDataUrl && (
         <div
@@ -443,6 +509,14 @@ export function PreviewPage() {
                 ✕ Завершить
               </button>
               <div className="flex items-center gap-3 bg-black/30 px-5 py-2 rounded-xl border border-white/5">
+                <button
+                  className="text-white/50 hover:text-white transition-colors text-lg leading-none"
+                  onClick={() => setMutedState(toggleMute())}
+                  title={muted ? "Включить звук" : "Выключить звук"}
+                >
+                  {muted ? "🔇" : "🔊"}
+                </button>
+                <div className="w-px h-4 bg-white/10" />
                 <span className="text-[13px] font-extrabold text-white/50 uppercase tracking-widest">
                   Вопрос {questionIndex + 1}
                   <span className="text-white/30"> / {total}</span>
@@ -607,44 +681,47 @@ export function PreviewPage() {
 
             const timerColor =
               timerPct > 0.4
-                ? "#a78bfa"
+                ? "#10b981"
                 : timerPct > 0.2
                   ? "#fbbf24"
                   : "#f87171";
             const timerGlow =
               timerPct > 0.4
-                ? "rgba(167,139,250,0.8)"
+                ? "rgba(16,185,129,0.7)"
                 : timerPct > 0.2
-                  ? "rgba(251,191,36,0.8)"
-                  : "rgba(248,113,113,0.8)";
+                  ? "rgba(251,191,36,0.7)"
+                  : "rgba(248,113,113,0.7)";
 
             return (
               <>
-                {/* ── TOP ZONE: арт + вопрос ─────────────────────────────── */}
+                {/* ── TOP ZONE: таймер + вопрос (центрировано) ──────────── */}
                 <div
                   style={{
-                    height: "42vh",
-                    minHeight: 130,
+                    flex: 1,
                     position: "relative",
                     display: "flex",
                     flexDirection: "column",
-                    justifyContent: "flex-end",
-                    padding: "14px 24px 22px",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 24,
+                    padding: "14px 24px",
                   }}
                 >
-                  {/* Q counter + lives are in the glass header above */}
-                  {/* Circular SVG timer */}
-                  {/* Circular SVG timer */}
+                  {/* Circular SVG timer — centered */}
                   <div
                     style={{
-                      position: "absolute",
-                      top: 8,
-                      right: 18,
-                      width: 72,
-                      height: 72,
+                      position: "relative",
+                      width: 96,
+                      height: 96,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
+                      borderRadius: "50%",
+                      boxShadow: `0 0 24px 4px ${timerGlow}`,
+                      animation:
+                        timerPct <= 0.3 && state === "playing"
+                          ? "pulse-scale 0.8s ease-in-out infinite"
+                          : "none",
                     }}
                   >
                     <svg
@@ -653,6 +730,7 @@ export function PreviewPage() {
                         inset: 0,
                         width: "100%",
                         height: "100%",
+                        overflow: "visible",
                       }}
                       viewBox="0 0 100 100"
                     >
@@ -679,14 +757,13 @@ export function PreviewPage() {
                           transformOrigin: "50% 50%",
                           transition:
                             "stroke-dashoffset 0.1s linear, stroke 0.5s ease",
-                          filter: `drop-shadow(0 0 8px ${timerGlow})`,
                         }}
                       />
                     </svg>
                     <span
                       style={{
                         color: timerColor,
-                        fontSize: "1.35rem",
+                        fontSize: "1.75rem",
                         fontWeight: 900,
                         fontFamily: "'JetBrains Mono', monospace",
                         fontVariantNumeric: "tabular-nums",
@@ -698,50 +775,43 @@ export function PreviewPage() {
                       {Math.ceil(timeLeft / 1000)}
                     </span>
                   </div>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "clamp(1.5rem,3.2vw,2.6rem)",
-                      fontWeight: 900,
-                      lineHeight: 1.2,
-                      textShadow:
-                        "0 2px 28px rgba(0,0,0,1), 0 1px 6px rgba(0,0,0,0.95)",
-                      letterSpacing: "-0.01em",
-                    }}
-                  >
-                    {currentQuestion.text}
-                  </p>
-                </div>
-
-                {/* ── TIMER HORIZON ─────────────────────────────────────── */}
-                <div
-                  style={{
-                    height: 4,
-                    background: "rgba(255,255,255,0.06)",
-                    flexShrink: 0,
-                  }}
-                >
+                  {/* Question text — centered */}
                   <div
                     style={{
-                      height: "100%",
-                      width: `${timerPct * 100}%`,
-                      background: timerColor,
-                      boxShadow: `0 0 12px ${timerGlow}`,
-                      transition: "width 0.1s linear, background 0.5s",
+                      width: "100%",
+                      padding: "0 16px",
+                      textAlign: "center",
                     }}
-                  />
+                  >
+                    <h1
+                      style={{
+                        margin: 0,
+                        fontSize: "clamp(1.5rem, 3.2vw, 2.8rem)",
+                        fontWeight: 900,
+                        lineHeight: 1.2,
+                        textShadow:
+                          "0 2px 28px rgba(0,0,0,0.8), 0 1px 6px rgba(0,0,0,0.6)",
+                        letterSpacing: "-0.01em",
+                        textWrap: "balance" as never,
+                      }}
+                    >
+                      {currentQuestion.text}
+                    </h1>
+                  </div>
                 </div>
 
                 {/* ── TILES ZONE ────────────────────────────────────────── */}
                 <div
+                  key={shakeKey}
+                  className={isFeedback && !lastCorrect ? "animate-shake" : ""}
                   style={{
-                    flex: 1,
-                    minHeight: 0,
-                    background: "#0d0d12",
+                    height: "40vh",
+                    minHeight: 280,
                     display: "flex",
                     flexDirection: "column",
-                    padding: "10px 12px",
-                    gap: 8,
+                    padding: "0 24px 32px",
+                    gap: 16,
+                    flexShrink: 0,
                   }}
                 >
                   {/* ── single_choice tiles ── */}
@@ -753,7 +823,7 @@ export function PreviewPage() {
                         display: "grid",
                         gridTemplateColumns: "1fr 1fr",
                         gridTemplateRows: `repeat(${Math.ceil(opts.length / 2)}, 1fr)`,
-                        gap: 8,
+                        gap: 16,
                       }}
                     >
                       {opts.map((opt, i) => {
@@ -769,57 +839,65 @@ export function PreviewPage() {
                             data-demo-opt={i}
                             disabled={isFeedback}
                             onClick={() => clickSingle(opt.id)}
+                            className="answer-tile-hover"
                             style={{
                               background: isCorrect
                                 ? "linear-gradient(145deg,#16a34a,#22c55e)"
                                 : isWrong
                                   ? "linear-gradient(145deg,#7f1d1d,#991b1b)"
                                   : tc.bg,
-                              opacity: dimmed ? 0.4 : 1,
+                              opacity: dimmed ? 0.25 : 1,
+                              filter: dimmed ? "grayscale(100%)" : "none",
                               boxShadow: isCorrect
-                                ? "0 0 40px rgba(34,197,94,0.7), 0 8px 24px rgba(0,0,0,0.5)"
-                                : isChosen && !isFeedback
-                                  ? `0 0 32px ${tc.glow}, 0 8px 24px rgba(0,0,0,0.5)`
-                                  : "0 4px 16px rgba(0,0,0,0.45)",
-                              transform: isCorrect ? "scale(1.03)" : "scale(1)",
-                              transition: "all 0.2s ease",
-                              border: isCorrect
-                                ? "2.5px solid rgba(134,239,172,0.8)"
+                                ? "0 0 40px rgba(34,197,94,0.7), inset 0 0 20px rgba(255,255,255,0.2)"
                                 : isWrong
-                                  ? "2.5px solid rgba(248,113,113,0.7)"
-                                  : "2.5px solid transparent",
+                                  ? "0 0 30px rgba(239,68,68,0.4)"
+                                  : "inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 20px rgba(0,0,0,0.3)",
+                              transform: isCorrect ? "scale(1.02)" : "scale(1)",
+                              transition:
+                                "all 0.3s cubic-bezier(0.25,0.8,0.25,1)",
+                              border: isCorrect
+                                ? "2px solid rgba(255,255,255,0.8)"
+                                : isWrong
+                                  ? "2px solid rgba(239,68,68,0.7)"
+                                  : "2px solid rgba(255,255,255,0.1)",
                               borderRadius: "16px",
                               display: "flex",
-                              alignItems: "center",
-                              gap: "clamp(10px,1.5vw,20px)",
-                              padding: "0 clamp(14px,2vw,28px)",
+                              alignItems: "stretch",
+                              overflow: "hidden",
                               cursor: isFeedback ? "default" : "pointer",
+                              position: "relative",
                             }}
                           >
+                            {/* Letter badge */}
                             <span
                               style={{
-                                width: "clamp(36px,5vw,58px)",
-                                height: "clamp(36px,5vw,58px)",
-                                borderRadius: "12px",
-                                background: "rgba(0,0,0,0.35)",
+                                background: "rgba(0,0,0,0.2)",
+                                borderRight: "1px solid rgba(255,255,255,0.1)",
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                fontSize: "clamp(1rem,1.8vw,1.5rem)",
                                 fontWeight: 900,
+                                fontSize: "clamp(1.2rem,2.5vw,1.75rem)",
+                                width: "clamp(56px,6vw,80px)",
                                 flexShrink: 0,
-                                border: "2px solid rgba(255,255,255,0.2)",
+                                boxShadow: "inset -5px 0 10px rgba(0,0,0,0.1)",
                               }}
                             >
                               {isCorrect ? "✓" : isWrong ? "✗" : LETTERS[i]}
                             </span>
+                            {/* Text */}
                             <span
                               style={{
-                                fontSize: "clamp(0.95rem,2vw,1.6rem)",
+                                flex: 1,
+                                display: "flex",
+                                alignItems: "center",
+                                padding: "0 clamp(14px,2vw,24px)",
+                                fontSize: "clamp(1rem,2vw,1.5rem)",
                                 fontWeight: 700,
                                 lineHeight: 1.2,
                                 textAlign: "left",
-                                flex: 1,
+                                textShadow: "0 1px 3px rgba(0,0,0,0.3)",
                               }}
                             >
                               {opt.text}
@@ -840,7 +918,7 @@ export function PreviewPage() {
                           display: "grid",
                           gridTemplateColumns: "1fr 1fr",
                           gridTemplateRows: `repeat(${Math.ceil((q as MultipleChoiceQuestion).options.length / 2)}, 1fr)`,
-                          gap: 8,
+                          gap: 16,
                         }}
                       >
                         {(q as MultipleChoiceQuestion).options.map((opt, i) => {
@@ -855,49 +933,55 @@ export function PreviewPage() {
                               key={opt.id}
                               disabled={isFeedback}
                               onClick={() => toggleMulti(opt.id)}
+                              className="answer-tile-hover"
                               style={{
                                 background: isCorrect
                                   ? "linear-gradient(145deg,#16a34a,#22c55e)"
                                   : isWrong
                                     ? "linear-gradient(145deg,#7f1d1d,#991b1b)"
                                     : tc.bg,
-                                opacity: dimmed ? 0.4 : 1,
+                                opacity: dimmed ? 0.25 : 1,
+                                filter: dimmed ? "grayscale(100%)" : "none",
                                 boxShadow: isCorrect
-                                  ? "0 0 40px rgba(34,197,94,0.7), 0 8px 24px rgba(0,0,0,0.5)"
-                                  : isChosen
-                                    ? `0 0 32px ${tc.glow}, 0 8px 24px rgba(0,0,0,0.5)`
-                                    : "0 4px 16px rgba(0,0,0,0.45)",
+                                  ? "0 0 40px rgba(34,197,94,0.7), inset 0 0 20px rgba(255,255,255,0.2)"
+                                  : isChosen && !isFeedback
+                                    ? `0 0 32px ${tc.glow}, inset 0 0 20px rgba(255,255,255,0.15)`
+                                    : "inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 20px rgba(0,0,0,0.3)",
                                 transform:
                                   isCorrect || (isChosen && !isFeedback)
                                     ? "scale(1.02)"
                                     : "scale(1)",
-                                transition: "all 0.2s ease",
+                                transition:
+                                  "all 0.3s cubic-bezier(0.25,0.8,0.25,1)",
                                 border: isCorrect
-                                  ? "2.5px solid rgba(134,239,172,0.8)"
+                                  ? "2px solid rgba(255,255,255,0.8)"
                                   : isChosen && !isFeedback
-                                    ? "2.5px solid rgba(255,255,255,0.5)"
-                                    : "2.5px solid transparent",
+                                    ? "2px solid rgba(255,255,255,0.5)"
+                                    : isWrong
+                                      ? "2px solid rgba(239,68,68,0.7)"
+                                      : "2px solid rgba(255,255,255,0.1)",
                                 borderRadius: 16,
                                 display: "flex",
-                                alignItems: "center",
-                                gap: "clamp(8px,1.2vw,16px)",
-                                padding: "0 clamp(10px,1.5vw,20px)",
+                                alignItems: "stretch",
+                                overflow: "hidden",
                                 cursor: isFeedback ? "default" : "pointer",
+                                position: "relative",
                               }}
                             >
                               <span
                                 style={{
-                                  width: "clamp(26px,3vw,40px)",
-                                  height: "clamp(26px,3vw,40px)",
-                                  borderRadius: 9,
-                                  background: "rgba(0,0,0,0.3)",
+                                  background: "rgba(0,0,0,0.2)",
+                                  borderRight:
+                                    "1px solid rgba(255,255,255,0.1)",
                                   display: "flex",
                                   alignItems: "center",
                                   justifyContent: "center",
-                                  fontSize: "clamp(0.75rem,1.2vw,1rem)",
                                   fontWeight: 900,
+                                  fontSize: "clamp(1rem,2vw,1.5rem)",
+                                  width: "clamp(48px,5vw,70px)",
                                   flexShrink: 0,
-                                  border: "1.5px solid rgba(255,255,255,0.15)",
+                                  boxShadow:
+                                    "inset -5px 0 10px rgba(0,0,0,0.1)",
                                 }}
                               >
                                 {isCorrect
@@ -910,11 +994,15 @@ export function PreviewPage() {
                               </span>
                               <span
                                 style={{
+                                  flex: 1,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  padding: "0 clamp(12px,1.5vw,20px)",
                                   fontSize: "clamp(0.9rem,1.7vw,1.35rem)",
                                   fontWeight: 700,
                                   lineHeight: 1.2,
                                   textAlign: "left",
-                                  flex: 1,
+                                  textShadow: "0 1px 3px rgba(0,0,0,0.3)",
                                 }}
                               >
                                 {opt.text}
@@ -965,64 +1053,80 @@ export function PreviewPage() {
                         minHeight: 0,
                         display: "grid",
                         gridTemplateColumns: "1fr 1fr",
-                        gap: 8,
+                        gap: 16,
                       }}
                     >
-                      {([true, false] as const).map((val) => {
+                      {([true, false] as const).map((val, i) => {
                         const key = val ? "true" : "false";
                         const isChosen = selectedSingle === key;
                         const isCorrect = isFeedback && val === correctBool;
                         const isWrong = isFeedback && isChosen && !isCorrect;
                         const dimmed = isFeedback && !isCorrect && !isChosen;
+                        const tileBg = val
+                          ? "linear-gradient(145deg, #059669, #064e3b)"
+                          : "linear-gradient(145deg, #e11d48, #9f1239)";
                         return (
                           <button
                             key={key}
                             data-demo-tf={key}
                             disabled={isFeedback}
                             onClick={() => clickTrueFalse(val)}
+                            className="answer-tile-hover"
                             style={{
                               background: isCorrect
                                 ? "linear-gradient(145deg,#16a34a,#22c55e)"
                                 : isWrong
                                   ? "linear-gradient(145deg,#7f1d1d,#991b1b)"
-                                  : val
-                                    ? "linear-gradient(145deg,#166534,#16a34a)"
-                                    : "linear-gradient(145deg,#7f1d1d,#dc2626)",
-                              opacity: dimmed ? 0.4 : 1,
+                                  : tileBg,
+                              opacity: dimmed ? 0.25 : 1,
+                              filter: dimmed ? "grayscale(100%)" : "none",
                               boxShadow: isCorrect
-                                ? "0 0 40px rgba(34,197,94,0.7)"
-                                : isChosen
-                                  ? val
-                                    ? "0 0 32px rgba(22,197,94,0.5)"
-                                    : "0 0 32px rgba(220,38,38,0.5)"
-                                  : "0 4px 20px rgba(0,0,0,0.5)",
-                              transform: isCorrect ? "scale(1.03)" : "scale(1)",
-                              transition: "all 0.2s ease",
+                                ? "0 0 40px rgba(34,197,94,0.7), inset 0 0 20px rgba(255,255,255,0.2)"
+                                : isWrong
+                                  ? "0 0 30px rgba(239,68,68,0.4)"
+                                  : "inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 20px rgba(0,0,0,0.3)",
+                              transform: isCorrect ? "scale(1.02)" : "scale(1)",
+                              transition:
+                                "all 0.3s cubic-bezier(0.25,0.8,0.25,1)",
                               border: isCorrect
-                                ? "2.5px solid rgba(134,239,172,0.8)"
-                                : "2.5px solid transparent",
-                              borderRadius: "20px",
+                                ? "2px solid rgba(255,255,255,0.8)"
+                                : isWrong
+                                  ? "2px solid rgba(239,68,68,0.7)"
+                                  : "2px solid rgba(255,255,255,0.1)",
+                              borderRadius: "16px",
                               display: "flex",
-                              flexDirection: "column",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: "10px",
+                              alignItems: "stretch",
+                              overflow: "hidden",
                               cursor: isFeedback ? "default" : "pointer",
+                              position: "relative",
                             }}
                           >
-                            <span style={{ fontSize: "clamp(2rem,6vw,5rem)" }}>
-                              {isCorrect
-                                ? "✅"
-                                : isWrong
-                                  ? "❌"
-                                  : val
-                                    ? "✅"
-                                    : "❌"}
-                            </span>
+                            {/* Letter badge */}
                             <span
                               style={{
-                                fontSize: "clamp(1.1rem,2.5vw,2rem)",
+                                background: "rgba(0,0,0,0.2)",
+                                borderRight: "1px solid rgba(255,255,255,0.1)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
                                 fontWeight: 900,
+                                fontSize: "clamp(1.2rem,2.5vw,1.75rem)",
+                                width: "clamp(56px,6vw,80px)",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {isCorrect ? "✓" : isWrong ? "✗" : LETTERS[i]}
+                            </span>
+                            {/* Content */}
+                            <span
+                              style={{
+                                flex: 1,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "clamp(1.2rem,2.5vw,2rem)",
+                                fontWeight: 800,
+                                padding: "0 24px",
                               }}
                             >
                               {val ? "Верно" : "Неверно"}

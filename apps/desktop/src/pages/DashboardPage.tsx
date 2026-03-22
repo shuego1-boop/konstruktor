@@ -3,10 +3,11 @@ import { useNavigate } from "react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
+import { readTextFile } from "@tauri-apps/plugin-fs";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   MagnifyingGlass,
-  Bell,
+  Question,
   MagicWand,
   PaperPlaneTilt,
   FileArrowUp,
@@ -15,13 +16,16 @@ import {
   PencilSimple,
   CaretRight,
   Trophy,
+  CopySimple,
 } from "@phosphor-icons/react";
 import type { Quiz } from "@konstruktor/shared";
 import { Button, Spinner } from "@konstruktor/ui";
+import { Skeleton } from "@konstruktor/ui";
 import { useTour } from "../context/TourContext.tsx";
 import { useToast } from "../context/ToastContext.tsx";
 import { useDemo } from "../context/DemoContext.tsx";
 import { Sidebar } from "../components/Sidebar.tsx";
+import { QUIZ_TEMPLATES, type QuizTemplate } from "../data/templates.ts";
 
 const SUGGESTIONS = [
   "11 кл, Биология, Молекулярная биология",
@@ -61,20 +65,86 @@ function nameToAvatarIdx(name: string): number {
 // Pill-цвета для новых карточек
 const SUBJECT_PILL: Record<
   string,
-  { bg: string; text: string; emoji: string }
+  { bg: string; text: string; emoji: string; stripe: string }
 > = {
-  История: { bg: "bg-amber-50", text: "text-amber-700", emoji: "📜" },
-  Математика: { bg: "bg-sky-50", text: "text-sky-600", emoji: "📐" },
-  Биология: { bg: "bg-emerald-50", text: "text-emerald-700", emoji: "🌿" },
-  Физика: { bg: "bg-violet-50", text: "text-violet-600", emoji: "⚡" },
-  Химия: { bg: "bg-fuchsia-50", text: "text-fuchsia-600", emoji: "🧪" },
-  География: { bg: "bg-teal-50", text: "text-teal-600", emoji: "🌍" },
-  Литература: { bg: "bg-orange-50", text: "text-orange-600", emoji: "📚" },
+  История: {
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    emoji: "📜",
+    stripe: "from-amber-400 to-orange-400",
+  },
+  Математика: {
+    bg: "bg-sky-50",
+    text: "text-sky-600",
+    emoji: "📐",
+    stripe: "from-sky-400 to-blue-500",
+  },
+  Биология: {
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    emoji: "🌿",
+    stripe: "from-emerald-400 to-teal-500",
+  },
+  Физика: {
+    bg: "bg-violet-50",
+    text: "text-violet-600",
+    emoji: "⚡",
+    stripe: "from-violet-400 to-purple-500",
+  },
+  Химия: {
+    bg: "bg-fuchsia-50",
+    text: "text-fuchsia-600",
+    emoji: "🧪",
+    stripe: "from-fuchsia-400 to-pink-500",
+  },
+  География: {
+    bg: "bg-teal-50",
+    text: "text-teal-600",
+    emoji: "🌍",
+    stripe: "from-teal-400 to-cyan-500",
+  },
+  Литература: {
+    bg: "bg-orange-50",
+    text: "text-orange-600",
+    emoji: "📚",
+    stripe: "from-orange-400 to-red-400",
+  },
+  "Русский язык": {
+    bg: "bg-rose-50",
+    text: "text-rose-600",
+    emoji: "✏️",
+    stripe: "from-rose-400 to-pink-500",
+  },
+  Обществознание: {
+    bg: "bg-indigo-50",
+    text: "text-indigo-600",
+    emoji: "⚖️",
+    stripe: "from-indigo-400 to-blue-500",
+  },
+  Информатика: {
+    bg: "bg-cyan-50",
+    text: "text-cyan-600",
+    emoji: "💻",
+    stripe: "from-cyan-400 to-sky-500",
+  },
+  "Английский язык": {
+    bg: "bg-blue-50",
+    text: "text-blue-600",
+    emoji: "🇬🇧",
+    stripe: "from-blue-400 to-indigo-500",
+  },
+  ОБЖ: {
+    bg: "bg-yellow-50",
+    text: "text-yellow-700",
+    emoji: "🛡️",
+    stripe: "from-yellow-400 to-amber-500",
+  },
 };
 const DEFAULT_PILL = {
   bg: "bg-slate-100",
   text: "text-slate-600",
   emoji: "📝",
+  stripe: "from-slate-300 to-slate-400",
 };
 
 function pluralQ(n: number) {
@@ -87,8 +157,8 @@ function pluralQ(n: number) {
 export function DashboardPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  useTour(); // сохраняем контекст для AppTour
-  useDemo(); // сохраняем контекст для DemoRunner
+  const { startTour } = useTour();
+  const { startDemo } = useDemo();
   const { showToast } = useToast();
   const [creating, setCreating] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(
@@ -105,11 +175,24 @@ export function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSubject, setFilterSubject] = useState("");
   const [filterGrade, setFilterGrade] = useState("");
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   function dismissWelcome() {
     localStorage.setItem("konstruktor_welcomed", "1");
     setWelcomeOpen(false);
   }
+
+  // Ctrl+Shift+D — запуск демо
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.ctrlKey && e.shiftKey && e.key === "D") {
+        e.preventDefault();
+        startDemo();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [startDemo]);
 
   const { data: quizzes = [], isLoading } = useQuery<Quiz[]>({
     queryKey: ["quizzes"],
@@ -125,6 +208,31 @@ export function DashboardPage() {
     onError: (e: unknown) =>
       showToast(e instanceof Error ? e.message : "Ошибка удаления", "error"),
   });
+
+  async function handleDuplicate(quiz: Quiz, e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      const newId = await invoke<string>("create_quiz");
+      await invoke("update_quiz", {
+        id: newId,
+        data: {
+          title: `${quiz.title} (копия)`,
+          description: quiz.description ?? "",
+          subject: quiz.subject ?? "",
+          gradeLevel: quiz.gradeLevel ?? "",
+          questions: quiz.questions.map((q) => ({
+            ...q,
+            id: crypto.randomUUID(),
+          })),
+          settings: quiz.settings,
+        },
+      });
+      qc.invalidateQueries({ queryKey: ["quizzes"] });
+      showToast("Квиз скопирован", "success");
+    } catch {
+      showToast("Ошибка копирования", "error");
+    }
+  }
 
   const [publishingId, setPublishingId] = useState<string | null>(null);
 
@@ -275,7 +383,10 @@ export function DashboardPage() {
         <main className="flex-1 flex flex-col min-w-0">
           {/* Верхняя панель */}
           <header className="h-18 px-8 flex items-center justify-between z-10 sticky top-0 bg-[#FAFAFA]/80 backdrop-blur-xl border-b border-slate-200/50 shrink-0">
-            <div data-tour="header-title" className="flex items-center gap-2 text-[15px] font-bold text-slate-800">
+            <div
+              data-tour="header-title"
+              className="flex items-center gap-2 text-[15px] font-bold text-slate-800"
+            >
               <span className="text-slate-400">Рабочее пространство</span>
               <CaretRight size={12} weight="bold" className="text-slate-300" />
               <span>Мои квизы</span>
@@ -297,13 +408,14 @@ export function DashboardPage() {
                   className="w-full bg-white border border-slate-200 focus:bg-white focus:border-primary-300 focus:ring-4 focus:ring-primary-50 rounded-full py-2.5 pl-10 pr-4 text-sm font-semibold outline-none transition-all placeholder:text-slate-400 shadow-sm"
                 />
               </div>
-              {/* Колокол */}
+              {/* Помощь / Тур */}
               <button
                 data-tour="tour-btn"
                 className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-primary-600 hover:border-primary-200 transition-all shadow-sm"
-                onClick={() => showToast("Уведомлений пока нет", "info")}
+                onClick={() => startTour()}
+                title="Обзор интерфейса"
               >
-                <Bell size={20} weight="fill" />
+                <Question size={20} weight="bold" />
               </button>
             </div>
           </header>
@@ -340,8 +452,9 @@ export function DashboardPage() {
                       <p className="text-slate-600 text-[15px] font-medium mb-5">
                         Напишите тему урока, а ИИ соберёт из этого готовый квиз.
                       </p>
-                      <div className="relative flex items-center bg-white rounded-2xl p-1.5 shadow-input border border-primary-100 focus-within:ring-4 focus-within:ring-primary-50 transition-all">
+                      <div className="flex items-center bg-white rounded-2xl shadow-sm border border-slate-100 focus-within:border-primary-200 focus-within:ring-2 focus-within:ring-primary-50 transition-all">
                         <input
+                          data-demo="ai-banner-input"
                           type="text"
                           value={heroTopic}
                           onChange={(e) => setHeroTopic(e.target.value)}
@@ -350,12 +463,14 @@ export function DashboardPage() {
                               void handleCreateAI();
                           }}
                           placeholder="Например: Тест на 10 вопросов по строению цветка..."
-                          className="w-full bg-transparent text-slate-800 placeholder:text-slate-400 text-[15px] font-semibold px-4 py-3 outline-none"
+                          className="flex-1 min-w-0 bg-transparent text-slate-800 placeholder:text-slate-400 text-[15px] font-semibold pl-5 py-3.5 outline-none"
                         />
                         <button
+                          data-demo="ai-banner-btn"
                           onClick={() => void handleCreateAI()}
                           disabled={creating || !heroTopic.trim()}
-                          className="absolute right-2 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-[15px] px-6 py-2.5 rounded-xl transition-transform active:scale-95 shadow-md flex items-center gap-2"
+                          className="shrink-0 mr-1.5 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-[15px] px-5 py-2.5 rounded-xl transition-all active:scale-95 shadow-md flex items-center gap-2 whitespace-nowrap"
+                          style={{ backgroundColor: "#7c3aed" }}
                         >
                           {creating ? "..." : "Придумать"}
                           <PaperPlaneTilt size={16} weight="bold" />
@@ -387,13 +502,78 @@ export function DashboardPage() {
                     className="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 text-left group"
                     onClick={async () => {
                       try {
-                        await openFileDialog({ multiple: false });
+                        const result = await openFileDialog({
+                          multiple: false,
+                          filters: [
+                            { name: "Текстовые файлы", extensions: ["txt"] },
+                          ],
+                        });
+                        if (!result) return;
+                        const filePath =
+                          typeof result === "string" ? result : result.path;
+                        const content = await readTextFile(filePath);
+                        const lines = content
+                          .split("\n")
+                          .map((l) => l.trim())
+                          .filter(Boolean);
+                        if (lines.length === 0) {
+                          showToast("Файл пуст", "error");
+                          return;
+                        }
+                        setCreating(true);
+                        const newId = await invoke<string>("create_quiz");
+                        const questions = lines.map((line, i) => {
+                          const parts = line.split("|").map((p) => p.trim());
+                          const questionText = parts[0] || `Вопрос ${i + 1}`;
+                          if (parts.length >= 3) {
+                            const opts = parts.slice(1, -1);
+                            const correctIdx =
+                              Number(parts[parts.length - 1]) - 1;
+                            const options = opts.map((o, j) => ({
+                              id: String.fromCharCode(97 + j),
+                              text: o,
+                            }));
+                            const cId =
+                              options[correctIdx]?.id ?? options[0]?.id ?? "a";
+                            return {
+                              id: crypto.randomUUID(),
+                              type: "single_choice",
+                              text: questionText,
+                              points: 100,
+                              timeLimit: 30,
+                              options,
+                              correctOptionId: cId,
+                            };
+                          }
+                          return {
+                            id: crypto.randomUUID(),
+                            type: "single_choice",
+                            text: questionText,
+                            points: 100,
+                            timeLimit: 30,
+                            options: [
+                              { id: "a", text: "Вариант A" },
+                              { id: "b", text: "Вариант B" },
+                            ],
+                            correctOptionId: "a",
+                          };
+                        });
+                        await invoke("update_quiz", {
+                          id: newId,
+                          data: {
+                            title: `Импорт (${lines.length} вопросов)`,
+                            questions,
+                          },
+                        });
+                        qc.invalidateQueries({ queryKey: ["quizzes"] });
                         showToast(
-                          "Файл выбран — импорт скоро будет готов",
-                          "info",
+                          `Импортировано ${questions.length} вопросов`,
+                          "success",
                         );
+                        navigate(`/editor/${newId}`);
+                        setCreating(false);
                       } catch {
-                        // cancelled
+                        setCreating(false);
                       }
                     }}
                   >
@@ -405,14 +585,15 @@ export function DashboardPage() {
                         Загрузить файл
                       </div>
                       <div className="text-xs font-semibold text-slate-500 mt-0.5">
-                        Сделать тест из Word/PDF
+                        Импорт из .txt файла
                       </div>
                     </div>
                   </button>
 
                   <button
                     className="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 text-left group"
-                    onClick={() => showToast("Шаблоны — скоро!", "info")}
+                    onClick={() => setTemplatesOpen(true)}
+                    data-demo="templates-btn"
                   >
                     <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-500 flex items-center justify-center group-hover:scale-105 transition-transform">
                       <FolderStar size={24} weight="duotone" />
@@ -431,7 +612,7 @@ export function DashboardPage() {
                     className="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100 text-left group"
                     onClick={() => {
                       dismissWelcome();
-                      setCreateModalOpen(true);
+                      handleCreate();
                     }}
                     data-tour="new-quiz"
                   >
@@ -457,7 +638,7 @@ export function DashboardPage() {
                   <h1 className="text-[22px] font-extrabold text-slate-800 flex items-center gap-3">
                     Ваши материалы
                     <span className="px-3 py-1 rounded-xl bg-primary-50 text-primary-600 text-sm font-bold">
-                      {quizzes.length}
+                      {filteredQuizzes.length}
                     </span>
                   </h1>
                   <div className="flex items-center gap-3 overflow-x-auto pb-2 md:pb-0">
@@ -465,7 +646,7 @@ export function DashboardPage() {
                     <select
                       value={filterSubject}
                       onChange={(e) => setFilterSubject(e.target.value)}
-                      className="px-4 py-2.5 rounded-full bg-white border border-slate-200 text-slate-600 font-bold text-sm shadow-sm hover:border-primary-300 focus:outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-50 transition-all appearance-none cursor-pointer whitespace-nowrap"
+                      className="px-4 py-2.5 rounded-full bg-white border border-slate-100 text-slate-600 font-bold text-sm shadow-sm hover:border-slate-300 focus:outline-none focus:border-primary-300 transition-all appearance-none cursor-pointer whitespace-nowrap"
                     >
                       <option value="">Все предметы</option>
                       {allSubjects.map((s) => (
@@ -478,7 +659,7 @@ export function DashboardPage() {
                     <select
                       value={filterGrade}
                       onChange={(e) => setFilterGrade(e.target.value)}
-                      className="px-4 py-2.5 rounded-full bg-white border border-slate-200 text-slate-600 font-bold text-sm shadow-sm hover:border-primary-300 focus:outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-50 transition-all appearance-none cursor-pointer whitespace-nowrap"
+                      className="px-4 py-2.5 rounded-full bg-white border border-slate-100 text-slate-600 font-bold text-sm shadow-sm hover:border-slate-300 focus:outline-none focus:border-primary-300 transition-all appearance-none cursor-pointer whitespace-nowrap"
                     >
                       <option value="">Любой класс</option>
                       {allGrades.map((g) => (
@@ -492,18 +673,43 @@ export function DashboardPage() {
 
                 {/* Загрузка */}
                 {isLoading && (
-                  <div className="flex justify-center py-24">
-                    <Spinner size="lg" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-12">
+                    {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                      <div
+                        key={i}
+                        className="rounded-2xl bg-white shadow ring-1 ring-slate-200 overflow-hidden"
+                      >
+                        <Skeleton className="h-2 w-full rounded-none" />
+                        <div className="p-5 space-y-3">
+                          <Skeleton className="h-5 w-3/4" />
+                          <Skeleton variant="text" className="w-1/2" />
+                          <div className="flex gap-3 pt-2">
+                            <Skeleton className="h-4 w-14" />
+                            <Skeleton className="h-4 w-14" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 
                 {/* Пусто */}
                 {!isLoading && quizzes.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-                    <p className="text-lg font-semibold">Квизов пока нет.</p>
-                    <p className="text-sm mt-1">
-                      Введите тему выше или создайте пустой квиз.
+                  <div className="flex flex-col items-center justify-center py-24 text-center">
+                    <div className="text-6xl mb-6">📚</div>
+                    <h3 className="text-xl font-bold text-slate-700 mb-2">
+                      Ваши квизы появятся здесь
+                    </h3>
+                    <p className="text-sm text-slate-400 max-w-sm mb-6">
+                      Создайте первый квиз с помощью ИИ — просто введите тему
+                      выше или нажмите кнопку ниже.
                     </p>
+                    <button
+                      onClick={() => setCreateModalOpen(true)}
+                      className="bg-primary-600 hover:bg-primary-500 text-white font-bold text-sm px-6 py-3 rounded-2xl transition-all active:scale-95 shadow-md"
+                    >
+                      ✨ Создать квиз
+                    </button>
                   </div>
                 )}
 
@@ -537,11 +743,17 @@ export function DashboardPage() {
                             },
                           }}
                           {...(idx === 0 ? { "data-tour": "quiz-card" } : {})}
-                          className="group bg-white rounded-[20px] border border-slate-100 shadow-card hover:-translate-y-1 hover:shadow-[0_12px_30px_-8px_rgba(139,92,246,0.12)] hover:border-primary-100 transition-all duration-300 cursor-pointer flex flex-col min-h-60 p-6"
+                          data-demo-quiz-id={quiz.id}
+                          className="group bg-white rounded-[20px] border border-slate-100 shadow-card hover:-translate-y-1 hover:shadow-[0_12px_30px_-8px_rgba(139,92,246,0.12)] hover:border-primary-100 transition-all duration-300 cursor-pointer flex flex-col min-h-60"
                           onClick={() => navigate(`/editor/${quiz.id}`)}
                         >
+                          {/* Цветная полоска по предмету */}
+                          <div
+                            className={`h-1.5 w-full rounded-t-[20px] bg-gradient-to-r ${pill.stripe}`}
+                          />
+
                           {/* Шапка: предмет + класс */}
-                          <div className="flex justify-between items-start mb-4">
+                          <div className="flex justify-between items-start mb-4 px-6 pt-5">
                             <span
                               className={`${pill.bg} ${pill.text} px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5`}
                             >
@@ -555,12 +767,12 @@ export function DashboardPage() {
                           </div>
 
                           {/* Название */}
-                          <h3 className="text-[18px] font-extrabold text-slate-800 leading-snug mb-2 group-hover:text-primary-600 transition-colors line-clamp-2">
+                          <h3 className="px-6 text-[18px] font-extrabold text-slate-800 leading-snug mb-2 group-hover:text-primary-600 transition-colors line-clamp-2">
                             {quiz.title || "Без названия"}
                           </h3>
 
                           {/* Футер */}
-                          <div className="mt-auto pt-4 flex items-center justify-between">
+                          <div className="mt-auto pt-4 px-6 pb-6 flex items-center justify-between">
                             <div className="flex flex-col gap-1">
                               <span className="text-[13px] font-bold text-slate-600 flex items-center gap-1.5">
                                 <ListNumbers
@@ -583,11 +795,12 @@ export function DashboardPage() {
                             </div>
 
                             {/* Hover-действия */}
-                            <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 flex-wrap justify-end">
                               <button
                                 {...(idx === 0
                                   ? { "data-tour": "preview-btn" }
                                   : {})}
+                                data-demo="preview-btn"
                                 className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-primary-100 hover:text-primary-600 transition-colors"
                                 title="Превью"
                                 onClick={(e) => {
@@ -606,6 +819,13 @@ export function DashboardPage() {
                                 }}
                               >
                                 <PencilSimple size={16} />
+                              </button>
+                              <button
+                                className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-violet-100 hover:text-violet-600 transition-colors"
+                                title="Дублировать"
+                                onClick={(e) => void handleDuplicate(quiz, e)}
+                              >
+                                <CopySimple size={16} />
                               </button>
                               <button
                                 className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-sky-100 hover:text-sky-600 transition-colors"
@@ -706,7 +926,7 @@ export function DashboardPage() {
                     Демо-квиз
                   </p>
                   <p className="text-slate-400 text-sm mt-1">
-                    История России — попробуйте сами
+                    Посмотрите готовый квиз глазами ученика
                   </p>
                 </button>
               </div>
@@ -715,6 +935,24 @@ export function DashboardPage() {
                 className="text-sm text-slate-400 hover:text-slate-600 w-full text-center transition-colors"
               >
                 Пропустить
+              </button>
+              <button
+                onClick={() => {
+                  dismissWelcome();
+                  setTimeout(() => startTour(), 400);
+                }}
+                className="text-sm text-indigo-500 hover:text-indigo-700 w-full text-center transition-colors font-semibold"
+              >
+                🎯 Пройти обзор интерфейса
+              </button>
+              <button
+                onClick={() => {
+                  dismissWelcome();
+                  setTimeout(() => startDemo(), 400);
+                }}
+                className="text-sm text-violet-500 hover:text-violet-700 w-full text-center transition-colors font-semibold mt-1"
+              >
+                🎬 Посмотреть демо-ролик
               </button>
             </motion.div>
           </motion.div>
@@ -821,6 +1059,97 @@ export function DashboardPage() {
                 >
                   Создать пустой квиз →
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* ── Templates Modal ───────────────────────────────────────────── */}
+      <AnimatePresence>
+        {templatesOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6"
+            onClick={() => setTemplatesOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 16, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 350, damping: 28 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-8 pt-7 pb-4 border-b border-slate-100">
+                <h2 className="text-xl font-bold text-slate-800">
+                  📋 Шаблоны квизов
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Готовые квизы по школьной программе — выберите и начните
+                  редактировать
+                </p>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {QUIZ_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    className="text-left rounded-2xl border border-slate-200 p-5 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all group"
+                    data-demo="template-card"
+                    onClick={async () => {
+                      setTemplatesOpen(false);
+                      setCreating(true);
+                      try {
+                        const newId = await invoke<string>("create_quiz");
+                        await invoke("update_quiz", {
+                          id: newId,
+                          data: {
+                            title: tpl.title,
+                            description: tpl.description,
+                            subject: tpl.subject,
+                            gradeLevel: tpl.gradeLevel,
+                            questions: tpl.questions.map((q) => ({
+                              ...q,
+                              id: crypto.randomUUID(),
+                            })),
+                          },
+                        });
+                        qc.invalidateQueries({ queryKey: ["quizzes"] });
+                        showToast(`Шаблон «${tpl.title}» создан`, "success");
+                        navigate(`/editor/${newId}`);
+                      } catch {
+                        showToast("Ошибка создания", "error");
+                      } finally {
+                        setCreating(false);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-2xl">{tpl.emoji}</span>
+                      <div>
+                        <p className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                          {tpl.title}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {tpl.subject} · {tpl.gradeLevel} класс ·{" "}
+                          {tpl.questions.length} вопросов
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {tpl.description}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              <div className="px-8 py-4 border-t border-slate-100 flex justify-end">
+                <Button
+                  variant="secondary"
+                  onClick={() => setTemplatesOpen(false)}
+                >
+                  Закрыть
+                </Button>
               </div>
             </motion.div>
           </motion.div>

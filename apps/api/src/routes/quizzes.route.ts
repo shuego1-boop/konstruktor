@@ -17,6 +17,9 @@ quizzesRoute.use("*", authMiddleware);
 // GET /quizzes — list teacher's quizzes with session aggregates
 quizzesRoute.get("/", async (c) => {
   const user = c.get("user");
+  const limit = Math.min(Number(c.req.query("limit")) || 50, 200);
+  const offset = Math.max(Number(c.req.query("offset")) || 0, 0);
+
   const rows = await db
     .select({
       id: quizzes.id,
@@ -33,7 +36,9 @@ quizzesRoute.get("/", async (c) => {
     .leftJoin(quizSessions, eq(quizSessions.quizId, quizzes.id))
     .where(eq(quizzes.teacherId, user.id))
     .groupBy(quizzes.id)
-    .orderBy(desc(quizzes.updatedAt));
+    .orderBy(desc(quizzes.updatedAt))
+    .limit(limit)
+    .offset(offset);
 
   return c.json(rows);
 });
@@ -199,6 +204,9 @@ quizzesRoute.get("/:id/sessions", async (c) => {
 
   if (!quiz) return c.json({ error: "Quiz not found" }, 404);
 
+  const sessionsLimit = Math.min(Number(c.req.query("limit")) || 100, 500);
+  const sessionsOffset = Math.max(Number(c.req.query("offset")) || 0, 0);
+
   const sessions = await db
     .select({
       id: quizSessions.id,
@@ -212,7 +220,9 @@ quizzesRoute.get("/:id/sessions", async (c) => {
     })
     .from(quizSessions)
     .where(eq(quizSessions.quizId, quizId))
-    .orderBy(desc(quizSessions.startedAt));
+    .orderBy(desc(quizSessions.startedAt))
+    .limit(sessionsLimit)
+    .offset(sessionsOffset);
 
   const totalSessions = sessions.length;
   const averageScore =
